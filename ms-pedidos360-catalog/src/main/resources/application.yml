@@ -1,0 +1,38 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: ms-pedidos360-catalog
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME:pedidos360}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: ${DB_SCHEMA:catalog}
+      jakarta.persistence.create-database-schemas: true
+
+# Ninguno de estos valores tiene default: si falta uno la app no levanta,
+# que es preferible a levantar con una config de seguridad incompleta.
+security:
+  issuer-uri: ${AZURE_ISSUER_URI}
+  audiences: ${AZURE_AUDIENCES}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    cl.pedidos360: INFO

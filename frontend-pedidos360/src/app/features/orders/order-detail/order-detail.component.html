@@ -1,0 +1,50 @@
+<a routerLink="/orders" class="back">&larr; Volver a pedidos</a>
+
+<p *ngIf="loading">Cargando pedido...</p>
+<p *ngIf="error" class="error">{{ error }}</p>
+
+<ng-container *ngIf="order && !loading">
+  <div class="header">
+    <h1>Pedido #{{ order.id }}</h1>
+    <app-order-status-badge [status]="order.status"></app-order-status-badge>
+  </div>
+
+  <div class="info">
+    <p><strong>Cliente:</strong> {{ order.customerId }}</p>
+    <p><strong>Total:</strong> {{ order.total | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }}</p>
+    <p><strong>Creado:</strong> {{ order.createdAt | date: 'medium' }}</p>
+    <p *ngIf="order.deliveredAt"><strong>Entregado:</strong> {{ order.deliveredAt | date: 'medium' }}</p>
+  </div>
+
+  <h2>Items</h2>
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Cantidad</th>
+        <th>Precio</th>
+        <th>Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let item of order.items">
+        <td>{{ item.productSku }}</td>
+        <td>{{ item.qty }}</td>
+        <td>{{ item.price | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }}</td>
+        <td>{{ item.subtotal | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="actions" *ngIf="puedeCambiarEstado() && siguientesEstados.length > 0">
+    <h2>Cambiar estado</h2>
+    <button
+      *ngFor="let estado of siguientesEstados"
+      type="button"
+      [disabled]="cambiandoEstado"
+      (click)="cambiarEstado(estado)"
+    >
+      Marcar como {{ estado }}
+    </button>
+  </div>
+</ng-container>

@@ -1,0 +1,21 @@
+<h1>Bienvenido/a, {{ currentUser.username }}</h1>
+
+<p *ngIf="loading">Cargando resumen...</p>
+<p *ngIf="error" class="error">{{ error }}</p>
+
+<div class="cards" *ngIf="!loading && !error">
+  <div class="card" *ngIf="currentUser.hasRole('Admin')">
+    <span class="label">Ventas totales (entregados)</span>
+    <span class="value">{{ totalVentas | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }}</span>
+  </div>
+
+  <div class="card" *ngIf="currentUser.hasRole('Admin', 'Operador')">
+    <span class="label">Pedidos activos</span>
+    <span class="value">{{ pendientes.length }}</span>
+  </div>
+
+  <div class="card" *ngIf="currentUser.hasRole('Cliente')">
+    <span class="label">Mis pedidos</span>
+    <span class="value">{{ orders.length }}</span>
+  </div>
+</div>

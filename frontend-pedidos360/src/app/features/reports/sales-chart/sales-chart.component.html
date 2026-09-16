@@ -1,0 +1,7 @@
+<div class="chart">
+  <div class="bar-wrapper" *ngFor="let point of points">
+    <div class="bar" [style.height.%]="heightPercent(point.total)"></div>
+    <span class="label">{{ point.hour | date: 'HH:mm' }}</span>
+  </div>
+  <p *ngIf="points.length === 0" class="empty">Sin ventas registradas aun.</p>
+</div>

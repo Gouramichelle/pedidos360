@@ -1,0 +1,52 @@
+.add-item {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  select, input {
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+  }
+}
+
+.cart-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid #f3f4f6;
+  }
+}
+
+.total {
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.btn-confirm {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.error {
+  color: #b91c1c;
+}
+
+button {
+  cursor: pointer;
+}

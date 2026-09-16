@@ -1,0 +1,29 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.status-counts {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+
+  .label {
+    display: block;
+    color: #6b7280;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+  }
+}
+
+.error {
+  color: #b91c1c;
+}

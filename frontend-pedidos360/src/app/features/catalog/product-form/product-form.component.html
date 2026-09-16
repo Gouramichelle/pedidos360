@@ -1,0 +1,28 @@
+<form class="product-form" (ngSubmit)="submit()">
+  <h2>{{ product ? 'Editar producto' : 'Nuevo producto' }}</h2>
+
+  <label>
+    SKU
+    <input type="text" [(ngModel)]="form.sku" name="sku" required />
+  </label>
+
+  <label>
+    Nombre
+    <input type="text" [(ngModel)]="form.name" name="name" required />
+  </label>
+
+  <label>
+    Precio
+    <input type="number" min="0" [(ngModel)]="form.price" name="price" required />
+  </label>
+
+  <label>
+    Stock
+    <input type="number" min="0" [(ngModel)]="form.stock" name="stock" required />
+  </label>
+
+  <div class="form-actions">
+    <button type="submit">Guardar</button>
+    <button type="button" (click)="cancel.emit()">Cancelar</button>
+  </div>
+</form>

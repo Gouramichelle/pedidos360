@@ -1,0 +1,45 @@
+<div class="header">
+  <h1>Pedidos</h1>
+  <a *ngIf="puedeCrear()" routerLink="/orders/nuevo" class="btn-primary">+ Nuevo pedido</a>
+</div>
+
+<div class="filters">
+  <select [(ngModel)]="filtroEstado" name="filtroEstado">
+    <option value="">Todos los estados</option>
+    <option value="CREADO">Creado</option>
+    <option value="ACEPTADO">Aceptado</option>
+    <option value="EN_PREPARACION">En preparacion</option>
+    <option value="DESPACHADO">Despachado</option>
+    <option value="ENTREGADO">Entregado</option>
+    <option value="CANCELADO">Cancelado</option>
+  </select>
+</div>
+
+<p *ngIf="loading">Cargando pedidos...</p>
+<p *ngIf="error" class="error">{{ error }}</p>
+
+<table *ngIf="!loading && !error" class="orders-table">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Cliente</th>
+      <th>Estado</th>
+      <th>Total</th>
+      <th>Creado</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let order of filtrados">
+      <td>#{{ order.id }}</td>
+      <td>{{ order.customerId }}</td>
+      <td><app-order-status-badge [status]="order.status"></app-order-status-badge></td>
+      <td>{{ order.total | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }}</td>
+      <td>{{ order.createdAt | date: 'short' }}</td>
+      <td><a [routerLink]="['/orders', order.id]">Ver detalle</a></td>
+    </tr>
+    <tr *ngIf="filtrados.length === 0">
+      <td colspan="6" class="empty">No hay pedidos para mostrar.</td>
+    </tr>
+  </tbody>
+</table>

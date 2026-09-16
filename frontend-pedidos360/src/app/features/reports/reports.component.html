@@ -1,0 +1,19 @@
+<h1>Reportes y KPIs</h1>
+
+<p *ngIf="loading">Cargando KPIs...</p>
+<p *ngIf="error" class="error">{{ error }}</p>
+
+<div class="grid" *ngIf="kpis && !loading">
+  <app-lead-time-chart [averageSeconds]="kpis.averageLeadTimeSeconds"></app-lead-time-chart>
+
+  <div class="status-counts">
+    <span class="label">Pedidos activos por estado</span>
+    <div class="row" *ngFor="let s of kpis.activeStatusCounts">
+      <span>{{ s.status }}</span>
+      <strong>{{ s.count }}</strong>
+    </div>
+  </div>
+</div>
+
+<h2 *ngIf="kpis">Ventas por hora (pedidos entregados)</h2>
+<app-sales-chart *ngIf="kpis" [points]="kpis.salesByHour"></app-sales-chart>

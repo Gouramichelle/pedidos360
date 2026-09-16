@@ -1,0 +1,50 @@
+.product-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  .name {
+    font-weight: 600;
+  }
+
+  .sku {
+    color: #9ca3af;
+    font-size: 0.8rem;
+  }
+
+  .price {
+    margin-top: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .stock {
+    color: #16a34a;
+    font-size: 0.85rem;
+
+    &.low {
+      color: #dc2626;
+    }
+  }
+
+  .actions {
+    margin-top: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+
+    button {
+      flex: 1;
+      padding: 0.35rem;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      cursor: pointer;
+
+      &.danger {
+        border-color: #fca5a5;
+        color: #b91c1c;
+      }
+    }
+  }
+}

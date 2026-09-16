@@ -1,0 +1,42 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: ms-pedidos360-notify
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        # 3 reintentos con backoff antes de que el broker enrute a la DLQ
+        # (via x-dead-letter-exchange configurado en la cola).
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+          multiplier: 2.0
+
+# ms-notify no expone API publica ni valida JWT (es un consumer interno),
+# pero mantiene issuer-uri/audiences por si en el futuro se le agrega un
+# endpoint de health/administracion protegido.
+security:
+  issuer-uri: ${AZURE_ISSUER_URI:https://login.microsoftonline.com/placeholder/v2.0}
+  audiences: ${AZURE_AUDIENCES:api://placeholder}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    cl.pedidos360: INFO

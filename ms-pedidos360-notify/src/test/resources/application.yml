@@ -1,0 +1,4 @@
+security:
+  issuer-uri: https://login.microsoftonline.com/00000000-1111-2222-3333-444444444444/v2.0
+  audiences: api://test-api,99999999-8888-7777-6666-555555555555
+  allowed-origins: http://localhost:4200

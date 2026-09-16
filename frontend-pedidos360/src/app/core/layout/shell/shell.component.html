@@ -1,0 +1,54 @@
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">Pedidos360</div>
+    <nav>
+      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+      <a routerLink="/orders" routerLinkActive="active">Pedidos</a>
+      <a
+        *ngIf="currentUser.hasRole('Admin', 'Operador')"
+        routerLink="/catalog"
+        routerLinkActive="active"
+        >Catalogo</a
+      >
+      <a *ngIf="currentUser.hasRole('Admin')" routerLink="/reports" routerLinkActive="active"
+        >Reportes</a
+      >
+      <a
+        *ngIf="currentUser.hasRole('Admin', 'Auditor')"
+        routerLink="/audit"
+        routerLinkActive="active"
+        >Auditoria</a
+      >
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <span class="user">{{ currentUser.username }}</span>
+      <span class="roles">{{ currentUser.rolesReales.join(', ') || 'sin rol asignado' }}</span>
+
+      <label class="vista-rol" *ngIf="puedeSimular">
+        Ver segun rol
+        <select
+          [value]="currentUser.vistaRol ?? ''"
+          (change)="cambiarVista($any($event.target).value)"
+        >
+          <option value="">Todos mis roles</option>
+          <option *ngFor="let rol of todosLosRoles" [value]="rol">{{ rol }}</option>
+        </select>
+      </label>
+
+      <button type="button" (click)="logout()">Cerrar sesion</button>
+    </header>
+
+    <div class="aviso-simulacion" *ngIf="currentUser.simulando">
+      Viendo la aplicacion como <strong>{{ currentUser.vistaRol }}</strong>. Es una vista previa de
+      interfaz: el token enviado al backend sigue siendo el tuyo, con todos tus roles. Para probar
+      la seguridad real hay que iniciar sesion con un usuario que tenga solo ese rol.
+    </div>
+
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

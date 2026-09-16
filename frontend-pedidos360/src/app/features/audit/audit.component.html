@@ -1,0 +1,49 @@
+<h1>Auditoria</h1>
+
+<div class="filters">
+  <label>
+    Pedido (ID)
+    <input type="number" [(ngModel)]="filtros.entityId" name="entityId" />
+  </label>
+  <label>
+    Usuario
+    <input type="text" [(ngModel)]="filtros.actor" name="actor" placeholder="correo@pedidos360.cl" />
+  </label>
+  <label>
+    Desde
+    <input type="datetime-local" [(ngModel)]="filtros.from" name="from" />
+  </label>
+  <label>
+    Hasta
+    <input type="datetime-local" [(ngModel)]="filtros.to" name="to" />
+  </label>
+  <button type="button" (click)="buscar()">Filtrar</button>
+  <button type="button" (click)="limpiarFiltros()">Limpiar</button>
+</div>
+
+<p *ngIf="loading">Cargando eventos...</p>
+<p *ngIf="error" class="error">{{ error }}</p>
+
+<table class="audit-table" *ngIf="!loading && !error">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Evento</th>
+      <th>Pedido</th>
+      <th>Actor</th>
+      <th>Detalle</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let e of events">
+      <td>{{ e.occurredAt | date: 'medium' }}</td>
+      <td>{{ e.eventType }}</td>
+      <td>#{{ e.entityId }}</td>
+      <td>{{ e.actor }}</td>
+      <td class="payload">{{ e.payloadJson }}</td>
+    </tr>
+    <tr *ngIf="events.length === 0">
+      <td colspan="5" class="empty">Sin eventos para los filtros aplicados.</td>
+    </tr>
+  </tbody>
+</table>

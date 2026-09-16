@@ -1,0 +1,24 @@
+<div class="header">
+  <h1>Catalogo</h1>
+  <button *ngIf="puedeEditar()" type="button" (click)="nuevoProducto()">+ Nuevo producto</button>
+</div>
+
+<p *ngIf="loading">Cargando catalogo...</p>
+<p *ngIf="error" class="error">{{ error }}</p>
+
+<app-product-form
+  *ngIf="mostrandoFormulario"
+  [product]="productoEnEdicion"
+  (save)="guardar($event)"
+  (cancel)="cancelarFormulario()"
+></app-product-form>
+
+<div class="grid" *ngIf="!loading && !error && !mostrandoFormulario">
+  <app-product-card
+    *ngFor="let producto of productos"
+    [product]="producto"
+    [puedeEditar]="puedeEditar()"
+    (edit)="editar($event)"
+    (remove)="eliminar($event)"
+  ></app-product-card>
+</div>

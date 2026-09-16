@@ -1,0 +1,47 @@
+<h1>Nuevo pedido</h1>
+<p *ngIf="error" class="error">{{ error }}</p>
+
+<div class="add-item">
+  <select [(ngModel)]="productoSeleccionadoId" name="producto">
+    <option [ngValue]="null">Selecciona un producto</option>
+    <option *ngFor="let p of productos" [ngValue]="p.id">
+      {{ p.name }} ({{ p.price | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }})
+    </option>
+  </select>
+  <input type="number" min="1" [(ngModel)]="cantidad" name="cantidad" />
+  <button type="button" [disabled]="!productoSeleccionadoId" (click)="agregarAlCarrito()">
+    Agregar
+  </button>
+</div>
+
+<table class="cart-table" *ngIf="carrito.length > 0">
+  <thead>
+    <tr>
+      <th>Producto</th>
+      <th>Cantidad</th>
+      <th>Precio</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let linea of carrito; let i = index">
+      <td>{{ linea.nombreProducto }}</td>
+      <td>{{ linea.qty }}</td>
+      <td>{{ linea.price | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }}</td>
+      <td><button type="button" (click)="quitarDelCarrito(i)">Quitar</button></td>
+    </tr>
+  </tbody>
+</table>
+
+<p class="total" *ngIf="carrito.length > 0">
+  Total: {{ total | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }}
+</p>
+
+<button
+  type="button"
+  class="btn-confirm"
+  [disabled]="carrito.length === 0 || guardando"
+  (click)="confirmar()"
+>
+  Confirmar pedido
+</button>

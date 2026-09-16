@@ -1,0 +1,10 @@
+<div class="product-card">
+  <div class="name">{{ product.name }}</div>
+  <div class="sku">{{ product.sku }}</div>
+  <div class="price">{{ product.price | currency: 'CLP' : 'symbol-narrow' : '1.0-0' }}</div>
+  <div class="stock" [class.low]="product.stock < 10">Stock: {{ product.stock }}</div>
+  <div class="actions" *ngIf="puedeEditar">
+    <button type="button" (click)="edit.emit(product)">Editar</button>
+    <button type="button" class="danger" (click)="remove.emit(product)">Eliminar</button>
+  </div>
+</div>

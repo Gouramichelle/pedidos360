@@ -1,0 +1,5 @@
+<div class="lead-time">
+  <span class="label">Lead time promedio</span>
+  <span class="value" *ngIf="minutos !== null">{{ minutos }} min</span>
+  <span class="value muted" *ngIf="minutos === null">Sin pedidos entregados aun</span>
+</div>
