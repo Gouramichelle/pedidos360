@@ -13,6 +13,14 @@ ms-pedidos360-audit/     Spring Boot 3 — consumer Kafka, auditoria de solo lec
 infra/                   docker-compose para apps, RabbitMQ y Kafka+Zookeeper
 ```
 
+## Despliegue
+
+- **[infra/docs/despliegue.md](infra/docs/despliegue.md)** — guía completa desde
+  cero: Azure AD, red y Security Groups, RDS, EC2, mensajería, microservicios,
+  frontend y API Gateway, con la verificación final.
+- **[infra/docs/checklist-reinicio-lab.md](infra/docs/checklist-reinicio-lab.md)** —
+  qué reconfigurar cuando expira la sesión del laboratorio y cambian las IPs.
+
 ## Por que no hay BFF
 
 El caso original propone `ms-pedidos360-bff` como capa intermedia entre el
@@ -50,27 +58,10 @@ Para no dejar `/audit` inalcanzable si `Auditor` no se llega a crear en Azure
 AD a tiempo, el endpoint de auditoria acepta tambien `Admin`. Se recomienda
 crear el App Role `Auditor` en la App Registration de todas formas.
 
-## Como levantar todo localmente (sin AWS)
+## Ejecucion local
 
-1. Levantar mensajeria e infra:
-   ```bash
-   docker compose -f infra/mq/docker-compose.yml up -d
-   docker compose -f infra/kafka/docker-compose.yml up -d
-   ```
-   Para local, en `infra/kafka/docker-compose.yml` dejar
-   `KAFKA_ADVERTISED_HOST=localhost`.
-
-2. Tener un PostgreSQL local (o usar RDS) y crear la base `pedidos360`.
-
-3. Por cada microservicio: copiar `.env.example` a `.env`, completar los
-   valores, y correr `mvn spring-boot:run` (o el docker-compose de
-   `infra/apps`).
-
-4. Frontend: copiar los datos reales de Azure AD a
-   `frontend-pedidos360/src/environments/environment.ts` y correr
-   `npm start`.
-
-5. Swagger UI de cada microservicio: `http://localhost:<puerto>/swagger-ui.html`.
+Ver la seccion "Ejecucion local, sin AWS" de la
+[guia de despliegue](infra/docs/despliegue.md).
 
 ## Documentacion tecnica
 
