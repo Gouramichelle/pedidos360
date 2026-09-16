@@ -53,12 +53,23 @@ El Invoke URL del Gateway **no cambia**, así que el proxy de Nginx no se toca.
 **App registrations → Pedidos360 → Authentication → Single-page application**:
 borrar el redirect URI viejo y agregar `https://<IP>:8085/auth/callback`.
 
-### 3.3 Frontend y backend: nada que hacer
+### 3.3 API Gateway — origen de CORS
 
-El `redirectUri` del frontend se calcula desde `window.location.origin`, así que
-el mismo build sirve para cualquier IP sin recompilar. Y como Nginx quita el
-header `Origin` al hacer de proxy, el backend no evalúa CORS y `ALLOWED_ORIGINS`
-no necesita la IP pública.
+**API Gateway → pedidos360-api → CORS**: reemplazar Access-Control-Allow-Origin
+por `https://<IP>:8085`. Presionar **Add** antes de guardar.
+
+### 3.4 Backend — origen permitido
+
+En `~/infra/apps/.env` de `ec2-apps`:
+
+```
+ALLOWED_ORIGINS=https://<IP>:8085,http://localhost:4200
+```
+
+Después `sudo docker compose up -d` para recrear los contenedores.
+
+El frontend **no** necesita recompilarse: el `redirectUri` se calcula desde
+`window.location.origin` y el Invoke URL del Gateway no cambia.
 
 ## 4. Verificación rápida
 

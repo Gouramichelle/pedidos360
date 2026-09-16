@@ -17,29 +17,31 @@ infra/                   docker-compose para apps, RabbitMQ y Kafka+Zookeeper
 
 ```
 Navegador
-   │  HTTPS
-   ▼
-ec2-apps :8085  ── Nginx ──┬── sirve el frontend Angular (archivos estaticos)
-                           │
-                           └── proxy de /api/* ─────────┐
-                                                        ▼
-                                          API Gateway (HTTP API)
-                                          JWT Authorizer de Azure AD
-                                                        │
-                        ┌───────────────────────────────┤
-                        ▼                               ▼
-              ec2-apps :8080-8084              (valida antes de enrutar)
-              5 microservicios Spring Boot
-              cada uno revalida el JWT
-                        │
-        ┌───────────────┼────────────────┐
-        ▼               ▼                ▼
-   RDS PostgreSQL   ec2-mq-kafka     ec2-mq-kafka
-   (4 esquemas)     RabbitMQ :5672   Kafka :9092 + Zookeeper
+   │
+   ├── HTTPS ──> ec2-apps :8085 (Nginx)  sirve el frontend Angular
+   │
+   └── HTTPS ──> API Gateway (HTTP API)  llamadas a /api/*
+                 JWT Authorizer de Azure AD
+                 CORS configurado para el origen del frontend
+                         │  (valida el token antes de enrutar)
+                         ▼
+                 ec2-apps :8080-8084
+                 5 microservicios Spring Boot
+                 cada uno revalida el JWT
+                         │
+         ┌───────────────┼────────────────┐
+         ▼               ▼                ▼
+    RDS PostgreSQL   ec2-mq-kafka     ec2-mq-kafka
+    (4 esquemas)     RabbitMQ :5672   Kafka :9092 + Zookeeper
 ```
 
-El navegador nunca habla directo con los microservicios: todo pasa por Nginx y
-de ahi por el API Gateway, que valida el token antes de enrutar.
+El navegador nunca habla directo con los microservicios: las llamadas a la API
+van al API Gateway, que valida el token antes de enrutar. Nginx solo sirve los
+archivos del frontend.
+
+Nginx conserva ademas un proxy de `/api/*` hacia el mismo Invoke URL, que queda
+como alternativa de respaldo: apuntando `environment.prod.ts` a rutas relativas,
+todo vuelve a viajar por el mismo origen y CORS deja de intervenir.
 
 | Puerto | Servicio | Instancia |
 |---|---|---|
@@ -48,7 +50,7 @@ de ahi por el API Gateway, que valida el token antes de enrutar.
 | 8082 | ms-notify (sin API publica) | ec2-apps |
 | 8083 | ms-report | ec2-apps |
 | 8084 | ms-audit | ec2-apps |
-| 8085 | Nginx: frontend + proxy de la API | ec2-apps |
+| 8085 | Nginx: frontend (y proxy de la API como respaldo) | ec2-apps |
 | 5672 / 15672 | RabbitMQ y su consola | ec2-mq-kafka |
 | 9092 / 2181 | Kafka y Zookeeper | ec2-mq-kafka |
 | 5432 | PostgreSQL | RDS |
@@ -315,27 +317,38 @@ En **Authorization → Create and attach an authorizer**, tipo **JWT**:
 
 Hay que adjuntarlo a las cinco rutas: no se aplica solo.
 
-### 7.4 Stage y proxy
+### 7.4 Stage y CORS
 
 El stage `$default` se crea con **Auto-deploy** activado, asi que cada cambio se
 publica solo. Anotar el **Invoke URL**, que no cambia aunque cambien las IPs de
-las instancias.
+las instancias, y ponerlo en `API_GATEWAY_URL` de `environment.prod.ts`.
 
-En `frontend-pedidos360/nginx.conf`, el bloque `location /api/` debe apuntar a
-ese Invoke URL. Es el unico lugar donde aparece:
+Como el frontend y el Gateway estan en origenes distintos, hay que configurar
+**CORS** en el Gateway. En la seccion CORS de la API:
 
-```nginx
-proxy_pass https://<invoke-url-sin-https>/api/;
-proxy_set_header Host <invoke-url-sin-https>;
-```
+| Campo | Valor |
+|---|---|
+| Access-Control-Allow-Origin | `https://<ip-apps>:8085` |
+| Access-Control-Allow-Headers | `authorization,content-type` |
+| Access-Control-Allow-Methods | `GET,POST,PUT,PATCH,DELETE,OPTIONS` |
 
-El header `Host` y `proxy_ssl_server_name on` son obligatorios: API Gateway
-enruta por nombre de host y exige SNI en el handshake TLS.
+En la consola hay que presionar **Add** en cada campo antes de guardar; si solo
+se escribe el valor y se guarda, queda vacio.
 
-Este proxy existe para que el navegador vea todo en el mismo origen. Las rutas
-del Gateway usan el metodo `ANY`, que incluye `OPTIONS`, y como tienen el
-authorizer adjunto, el preflight de CORS, que el navegador envia sin cabecera
-`Authorization`, siempre respondia 401.
+Ademas, `ALLOWED_ORIGINS` en el `.env` del backend tiene que incluir ese mismo
+origen, porque el Gateway reenvia la cabecera `Origin` al microservicio.
+
+Un detalle a verificar: las rutas usan el metodo `ANY`, que incluye `OPTIONS`.
+Si el preflight responde 401 en vez de devolver las cabeceras CORS, significa
+que la ruta con authorizer esta interceptando la peticion, que el navegador
+envia sin `Authorization`. En ese caso hay que agregar rutas `OPTIONS`
+explicitas, sin authorizer, para cada path.
+
+Como alternativa, `nginx.conf` conserva un proxy de `/api/*` hacia el Invoke
+URL. Apuntando `environment.prod.ts` a rutas relativas, el navegador ve todo en
+el mismo origen y CORS deja de intervenir. El header `Host` y
+`proxy_ssl_server_name on` de ese bloque son obligatorios: API Gateway enruta
+por nombre de host y exige SNI en el handshake TLS.
 
 ### 7.5 Registrar el frontend en Azure AD
 

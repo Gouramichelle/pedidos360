@@ -1,12 +1,18 @@
 /**
  * Entorno de produccion.
  *
- * Las URLs de API son relativas a proposito: Nginx sirve el frontend y ademas
- * hace de proxy de /api/* hacia el Invoke URL del API Gateway (ver
- * nginx.conf). Al quedar todo en el mismo origen el navegador no dispara
- * preflight ni CORS, y el API Gateway con su JWT Authorizer sigue validando
- * el token en el borde antes de enrutar al microservicio.
+ * El frontend llama directamente al Invoke URL del API Gateway. Es una
+ * peticion cruzada, asi que el navegador dispara el preflight y se aplica la
+ * configuracion de CORS del Gateway, que es justamente lo que hay que poder
+ * mostrar y verificar.
+ *
+ * Nginx conserva un proxy de /api/* hacia el mismo Invoke URL (ver
+ * nginx.conf), que queda como alternativa de respaldo: apuntando estas URLs a
+ * rutas relativas, todo vuelve a viajar por el mismo origen y CORS deja de
+ * intervenir.
  */
+const API_GATEWAY_URL = 'https://7x6u8dfoh0.execute-api.us-east-1.amazonaws.com';
+
 export const environment = {
   production: true,
   msal: {
@@ -22,9 +28,9 @@ export const environment = {
   },
   apiScopes: ['api://d0120ca1-1d51-493b-9eaa-1121b5b7303a/access_as_user'],
   api: {
-    orders: '/api/orders',
-    catalog: '/api/catalog',
-    report: '/api/report',
-    audit: '/api/audit',
+    orders: `${API_GATEWAY_URL}/api/orders`,
+    catalog: `${API_GATEWAY_URL}/api/catalog`,
+    report: `${API_GATEWAY_URL}/api/report`,
+    audit: `${API_GATEWAY_URL}/api/audit`,
   },
 };
