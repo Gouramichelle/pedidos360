@@ -13,15 +13,23 @@ import jakarta.validation.constraints.NotNull;
 
 public class OrderDtos {
 
+    /**
+     * Sin precio ni SKU a proposito: los toma el servidor desde ms-catalog.
+     * Aceptarlos aqui permitiria fijar el precio desde el cliente.
+     */
     public record OrderItemRequest(
             @NotNull Long productId,
-            String productSku,
-            @NotNull @Min(1) Integer qty,
-            @NotNull BigDecimal price) {
+            @NotNull @Min(1) Integer qty) {
     }
 
+    /**
+     * customerId es opcional y solo se respeta para Admin y Operador, que
+     * pueden tomar un pedido en nombre de un cliente. Para un Cliente se
+     * ignora y se usa siempre su propia identidad del token: si no, cualquiera
+     * podria crear pedidos a nombre de otra persona.
+     */
     public record CreateOrderRequest(
-            @NotNull String customerId,
+            String customerId,
             @NotEmpty @Valid List<OrderItemRequest> items) {
     }
 

@@ -8,8 +8,14 @@ import { Product } from '../../../core/models/product.model';
 import { CreateOrderItemRequest } from '../../../core/models/order.model';
 import { CurrentUserService } from '../../../core/auth/current-user.service';
 
+/**
+ * El precio viaja solo para mostrar el total en pantalla; lo que se envia al
+ * backend son unicamente productId y qty.
+ */
 interface LineaCarrito extends CreateOrderItemRequest {
   nombreProducto: string;
+  productSku: string;
+  price: number;
 }
 
 @Component({
@@ -47,8 +53,8 @@ export class OrderCreateComponent implements OnInit {
 
     this.carrito.push({
       productId: producto.id,
-      productSku: producto.sku,
       qty: this.cantidad,
+      productSku: producto.sku,
       price: producto.price,
       nombreProducto: producto.name,
     });
@@ -71,13 +77,7 @@ export class OrderCreateComponent implements OnInit {
 
     this.ordersApi
       .create({
-        customerId: this.currentUser.username,
-        items: this.carrito.map(({ productId, productSku, qty, price }) => ({
-          productId,
-          productSku,
-          qty,
-          price,
-        })),
+        items: this.carrito.map(({ productId, qty }) => ({ productId, qty })),
       })
       .subscribe({
         next: (order) => this.router.navigate(['/orders', order.id]),

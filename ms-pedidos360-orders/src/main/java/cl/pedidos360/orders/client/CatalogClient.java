@@ -15,10 +15,28 @@ public class CatalogClient {
     public record StockDecreaseRequest(Integer qty) {
     }
 
+    /** Solo los campos que ms-orders necesita de la respuesta de catalogo. */
+    public record Product(Long id, String sku, java.math.BigDecimal price, Integer stock) {
+    }
+
     private final RestClient restClient;
 
     public CatalogClient(RestClient catalogRestClient) {
         this.restClient = catalogRestClient;
+    }
+
+    /**
+     * Precio y SKU se leen del catalogo y no del cuerpo de la peticion: si se
+     * confiara en lo que envia el cliente, cualquiera podria crear un pedido
+     * al precio que quisiera, y ademas los KPIs de ventas quedarian calculados
+     * sobre cifras inventadas.
+     */
+    public Product obtenerProducto(Long productId, String bearerToken) {
+        return restClient.get()
+                .uri("/api/catalog/products/{id}", productId)
+                .header("Authorization", bearerToken)
+                .retrieve()
+                .body(Product.class);
     }
 
     public void decreaseStock(Long productId, int qty, String bearerToken) {

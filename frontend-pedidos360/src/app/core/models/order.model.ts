@@ -28,15 +28,17 @@ export interface Order {
   cancelledAt?: string;
 }
 
+/**
+ * Sin precio ni SKU: los resuelve el backend consultando al catalogo. Y sin
+ * customerId, porque el pedido queda a nombre del usuario del token (solo
+ * Admin y Operador pueden indicar otro, cosa que esta pantalla no hace).
+ */
 export interface CreateOrderItemRequest {
   productId: number;
-  productSku: string;
   qty: number;
-  price: number;
 }
 
 export interface CreateOrderRequest {
-  customerId: string;
   items: CreateOrderItemRequest[];
 }
 

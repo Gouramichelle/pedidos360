@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -94,13 +95,60 @@ class OrderServiceTest {
 
     @Test
     void crearUnPedidoPublicaElEventoDeCreacionYElComandoDeEmail() {
-        service.crear(new OrderDtos.CreateOrderRequest("cliente-1",
-                List.of(new OrderDtos.OrderItemRequest(1L, "SKU-A", 2, new BigDecimal("10.00")))),
-                "cliente@pedidos360.cl");
+        when(catalogClient.obtenerProducto(eq(1L), anyString()))
+                .thenReturn(new CatalogClient.Product(1L, "SKU-A", new BigDecimal("10.00"), 50));
+
+        service.crear(
+                new OrderDtos.CreateOrderRequest(null, List.of(new OrderDtos.OrderItemRequest(1L, 2))),
+                "cliente-1", "Bearer x", "cliente@pedidos360.cl");
 
         verify(eventPublisher, times(1))
                 .publicarCambioEstado(any(Order.class), eq(OrderStatus.CREADO), eq("cliente@pedidos360.cl"), anyString(), anyString());
         verify(emailPublisher, times(1)).notificarCambioEstado(any(Order.class), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("el precio del item se toma del catalogo, no de lo que envie el cliente")
+    void elPrecioSeTomaDelCatalogo() {
+        when(catalogClient.obtenerProducto(eq(1L), anyString()))
+                .thenReturn(new CatalogClient.Product(1L, "SKU-REAL", new BigDecimal("8990.00"), 50));
+        when(repository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order creado = service.crear(
+                new OrderDtos.CreateOrderRequest(null, List.of(new OrderDtos.OrderItemRequest(1L, 2))),
+                "cliente-1", "Bearer x", "cliente@pedidos360.cl");
+
+        assertThat(creado.getItems().get(0).getPrice()).isEqualByComparingTo("8990.00");
+        assertThat(creado.getItems().get(0).getProductSku()).isEqualTo("SKU-REAL");
+        assertThat(creado.total()).isEqualByComparingTo("17980.00");
+    }
+
+    @Test
+    @DisplayName("el pedido queda a nombre del cliente que resuelve el controller, no del cuerpo")
+    void elPedidoQuedaANombreDelClienteIndicado() {
+        when(catalogClient.obtenerProducto(eq(1L), anyString()))
+                .thenReturn(new CatalogClient.Product(1L, "SKU-A", new BigDecimal("10.00"), 50));
+        when(repository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order creado = service.crear(
+                new OrderDtos.CreateOrderRequest("otro-cliente", List.of(new OrderDtos.OrderItemRequest(1L, 1))),
+                "cliente-real", "Bearer x", "cliente@pedidos360.cl");
+
+        assertThat(creado.getCustomerId()).isEqualTo("cliente-real");
+    }
+
+    @Test
+    @DisplayName("crear con un producto que no existe en catalogo falla")
+    void crearConProductoInexistenteFalla() {
+        when(catalogClient.obtenerProducto(eq(404L), anyString())).thenReturn(null);
+
+        assertThatThrownBy(() -> service.crear(
+                new OrderDtos.CreateOrderRequest(null, List.of(new OrderDtos.OrderItemRequest(404L, 1))),
+                "cliente-1", "Bearer x", "cliente@pedidos360.cl"))
+                .isInstanceOf(NotFoundException.class);
+
+        verify(eventPublisher, never())
+                .publicarCambioEstado(any(), any(), anyString(), anyString(), anyString());
     }
 
     @Test

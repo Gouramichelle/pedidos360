@@ -47,9 +47,20 @@ public class OrderService {
     }
 
     @Transactional
-    public Order crear(OrderDtos.CreateOrderRequest request, String actor) {
-        Order order = new Order(request.customerId());
-        request.items().forEach(i -> order.addItem(new OrderItem(i.productId(), i.productSku(), i.qty(), i.price())));
+    /**
+     * customerId llega ya resuelto por el controller a partir del token; el
+     * precio y el SKU de cada item se leen de ms-catalog. Nada del cuerpo de
+     * la peticion influye en a quien pertenece el pedido ni en cuanto cuesta.
+     */
+    public Order crear(OrderDtos.CreateOrderRequest request, String customerId, String bearerToken, String actor) {
+        Order order = new Order(customerId);
+        request.items().forEach(i -> {
+            CatalogClient.Product producto = catalogClient.obtenerProducto(i.productId(), bearerToken);
+            if (producto == null) {
+                throw new NotFoundException("No existe el producto " + i.productId());
+            }
+            order.addItem(new OrderItem(producto.id(), producto.sku(), i.qty(), producto.price()));
+        });
         Order guardado = repository.save(order);
         publicarEventos(guardado, OrderStatus.CREADO, actor);
         return guardado;

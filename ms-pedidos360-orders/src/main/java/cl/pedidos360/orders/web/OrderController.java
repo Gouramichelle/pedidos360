@@ -36,25 +36,52 @@ public class OrderController {
         this.service = service;
     }
 
+    /** Admin y Operador ven y operan sobre todos los pedidos; Cliente solo sobre los suyos. */
+    private boolean esStaff(Authentication auth) {
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_Admin") || a.getAuthority().equals("ROLE_Operador"));
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyRole('Admin', 'Operador', 'Cliente')")
     public List<OrderResponse> list(Authentication auth) {
-        boolean esStaff = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_Admin") || a.getAuthority().equals("ROLE_Operador"));
-        List<Order> orders = esStaff ? service.listar() : service.listarPorCliente(auth.getName());
+        List<Order> orders = esStaff(auth) ? service.listar() : service.listarPorCliente(auth.getName());
         return orders.stream().map(OrderResponse::from).toList();
     }
 
+    /**
+     * El rol por si solo no alcanza: sin esta comprobacion un Cliente podia
+     * leer cualquier pedido cambiando el id en la URL, y el filtro del listado
+     * quedaba en algo cosmetico.
+     *
+     * Se responde 404 y no 403 a proposito, para no revelar que el pedido
+     * existe y pertenece a otra persona.
+     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('Admin', 'Operador', 'Cliente')")
-    public OrderResponse get(@PathVariable Long id) {
-        return OrderResponse.from(service.buscar(id));
+    public OrderResponse get(@PathVariable Long id, Authentication auth) {
+        Order order = service.buscar(id);
+        if (!esStaff(auth) && !order.getCustomerId().equals(auth.getName())) {
+            throw new NotFoundException("No existe el pedido " + id);
+        }
+        return OrderResponse.from(order);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('Admin', 'Operador', 'Cliente')")
-    public ResponseEntity<OrderResponse> create(@Valid @RequestBody CreateOrderRequest body, Authentication auth) {
-        Order created = service.crear(body, auth.getName());
+    public ResponseEntity<OrderResponse> create(
+            @Valid @RequestBody CreateOrderRequest body,
+            @RequestHeader("Authorization") String authorization,
+            Authentication auth) {
+        // Un Cliente solo puede pedir para si mismo. Admin y Operador pueden
+        // tomar el pedido en nombre de otro, y si no lo indican queda a su
+        // nombre.
+        boolean puedeElegirCliente = esStaff(auth);
+        String customerId = puedeElegirCliente && body.customerId() != null && !body.customerId().isBlank()
+                ? body.customerId().trim()
+                : auth.getName();
+
+        Order created = service.crear(body, customerId, authorization, auth.getName());
         return ResponseEntity.status(201).body(OrderResponse.from(created));
     }
 
