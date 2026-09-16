@@ -1,7 +1,15 @@
 <div class="login-page">
   <div class="card">
     <h1>Pedidos360</h1>
-    <p>Inicia sesion con tu cuenta corporativa para continuar.</p>
-    <button type="button" (click)="login()">Iniciar sesion con Microsoft</button>
+    <p>Inicia sesion con tu cuenta para continuar.</p>
+    <button type="button" class="primario" (click)="login()">Iniciar sesion con Microsoft</button>
+
+    <p class="separador">o</p>
+
+    <button type="button" class="secundario" (click)="registrarse()">Crear una cuenta</button>
+    <p class="ayuda">
+      Al crear una cuenta quedas registrado en el directorio de Pedidos360. Un administrador debe
+      asignarte un rol para que puedas ver los modulos.
+    </p>
   </div>
 </div>

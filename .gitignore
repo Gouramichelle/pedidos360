@@ -23,9 +23,16 @@ dist/
 .classpath
 .project
 
+# Archivos temporales de Office
+~$*
+
 # SO
 .DS_Store
 Thumbs.db
 
 # Logs
 *.log
+
+# El deck publicado vive en la raiz; aqui solo el generador
+presentacion/*.pptx
+presentacion/*.pdf

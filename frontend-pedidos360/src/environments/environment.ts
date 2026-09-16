@@ -1,11 +1,14 @@
 /**
- * Entorno de desarrollo: MSAL contra el tenant de Azure AD y llamadas HTTP
- * directas a cada microservicio (sin pasar por API Gateway), para poder
- * levantar `ng serve` contra los servicios corriendo en localhost.
+ * Entorno de desarrollo: `ng serve` en http://localhost:4200.
  *
- * Reemplazar TENANT_ID, SPA_CLIENT_ID y API_CLIENT_ID por los valores reales
- * de la App Registration "Pedidos360" en Azure AD antes de correr la app.
+ * Las llamadas van al API Gateway desplegado, no a microservicios locales:
+ * el CORS del Gateway ya admite http://localhost:4200 como origen, asi que se
+ * puede desarrollar el frontend contra el backend real sin levantar nada mas.
+ * Para trabajar contra servicios corriendo en la propia maquina, reemplazar
+ * las URLs de abajo por http://localhost:8080 a 8084.
  */
+const API_GATEWAY_URL = 'https://7x6u8dfoh0.execute-api.us-east-1.amazonaws.com';
+
 export const environment = {
   production: false,
   msal: {
@@ -14,14 +17,11 @@ export const environment = {
     redirectUri: 'http://localhost:4200/auth/callback',
     postLogoutRedirectUri: 'http://localhost:4200',
   },
-  // El scope se termina de armar cuando expongamos la API en el paso
-  // "Expose an API" -- por ahora usa el mismo client ID como App ID URI
-  // (formato que Azure AD ofrece por default: api://<client-id>).
   apiScopes: ['api://d0120ca1-1d51-493b-9eaa-1121b5b7303a/access_as_user'],
   api: {
-    orders: 'http://localhost:8080/api/orders',
-    catalog: 'http://localhost:8081/api/catalog',
-    report: 'http://localhost:8083/api/report',
-    audit: 'http://localhost:8084/api/audit',
+    orders: `${API_GATEWAY_URL}/api/orders`,
+    catalog: `${API_GATEWAY_URL}/api/catalog`,
+    report: `${API_GATEWAY_URL}/api/report`,
+    audit: `${API_GATEWAY_URL}/api/audit`,
   },
 };

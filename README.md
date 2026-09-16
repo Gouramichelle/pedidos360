@@ -129,6 +129,33 @@ Para usuarios de otra organizacion: **Microsoft Entra ID → Users → Invite
 external user**. El invitado puede aceptar la invitacion simplemente iniciando
 sesion en la aplicacion, no necesita el correo.
 
+### 1.7 Registro de usuarios desde la aplicacion
+
+Para que una persona pueda crear su propia cuenta desde el frontend, en lugar
+de que un administrador la cree:
+
+1. **External Identities > All identity providers**: habilitar **Email one-time
+   passcode**, que permite registrarse con cualquier correo.
+2. **External Identities > External collaboration settings**: activar
+   **Enable guest self-service sign up via user flows**.
+3. **External Identities > User flows > New user flow**: crear el flujo con ese
+   proveedor y los atributos a solicitar (nombre y correo).
+4. Abrir el flujo creado y en **Applications** agregar **Pedidos360**. Sin este
+   paso el flujo existe pero no se aplica a la aplicacion.
+5. **Enterprise applications > Pedidos360 > Properties**: poner
+   **Assignment required?** en **No**, o el recien registrado no podra entrar.
+
+En el frontend, el boton "Crear una cuenta" usa el mismo flujo de autorizacion
+con el parametro `prompt=create`, el valor estandar de OpenID Connect para
+solicitar el alta, que lleva directo al formulario de registro
+(`src/app/features/login/login.component.ts`).
+
+Una aclaracion importante: quien se registra queda en el directorio **sin
+ningun rol**, asi que su token llega sin el claim `roles` y la aplicacion no le
+muestra modulos. Asignar el rol sigue siendo una accion administrativa desde
+**Enterprise applications > Pedidos360 > Users and groups**. El registro crea la
+identidad; la autorizacion se concede aparte.
+
 ## 2. Red y Security Groups en AWS
 
 Se usa la VPC por defecto de la region, sin crear nada. Verificar en **VPC →
@@ -296,15 +323,25 @@ devuelven 404.
 
 ### 7.2 Rutas
 
-Cinco rutas con metodo `ANY`, cada una asociada a su integracion:
+Diez rutas en total: cinco con metodo `ANY`, que atienden las peticiones reales
+y llevan el validador de token, y cinco con metodo `OPTIONS` sobre los mismos
+caminos, **sin validador**, para la peticion de verificacion previa del
+navegador:
 
-```
-/api/orders
-/api/orders/{proxy+}
-/api/catalog/{proxy+}
-/api/report/{proxy+}
-/api/audit/{proxy+}
-```
+| Camino | `ANY` | `OPTIONS` |
+|---|---|---|
+| `/api/orders` | con validador | sin validador |
+| `/api/orders/{proxy+}` | con validador | sin validador |
+| `/api/catalog/{proxy+}` | con validador | sin validador |
+| `/api/report/{proxy+}` | con validador | sin validador |
+| `/api/audit/{proxy+}` | con validador | sin validador |
+
+Cada ruta `OPTIONS` reutiliza la integracion de su ruta `ANY` equivalente, de
+modo que siguen siendo cinco integraciones.
+
+Conviven sin conflicto porque, a igual camino, el Gateway prefiere el metodo
+exacto sobre `ANY`. Asi la verificacion previa pasa sin credencial y cualquier
+`GET`, `POST`, `PUT`, `PATCH` o `DELETE` sigue exigiendo un token valido.
 
 ### 7.3 Authorizer
 
@@ -338,11 +375,21 @@ se escribe el valor y se guarda, queda vacio.
 Ademas, `ALLOWED_ORIGINS` en el `.env` del backend tiene que incluir ese mismo
 origen, porque el Gateway reenvia la cabecera `Origin` al microservicio.
 
-Un detalle a verificar: las rutas usan el metodo `ANY`, que incluye `OPTIONS`.
-Si el preflight responde 401 en vez de devolver las cabeceras CORS, significa
-que la ruta con authorizer esta interceptando la peticion, que el navegador
-envia sin `Authorization`. En ese caso hay que agregar rutas `OPTIONS`
-explicitas, sin authorizer, para cada path.
+Esto solo funciona junto con las rutas `OPTIONS` de la seccion anterior. Las
+rutas `ANY` incluyen el metodo `OPTIONS`, asi que sin ellas el validador
+intercepta la verificacion previa, que el navegador envia sin `Authorization`,
+y responde 401 antes de que el Gateway pueda devolver las cabeceras de CORS.
+
+Para comprobar que quedo bien:
+
+```bash
+curl -s -i -X OPTIONS -H "Origin: https://<ip-apps>:8085" \
+  -H "Access-Control-Request-Method: GET" \
+  https://<invoke-url>/api/orders | grep -i access-control
+```
+
+Debe devolver 200 y las cabeceras `access-control-allow-origin`, `-methods`,
+`-headers` y `-max-age`.
 
 Como alternativa, `nginx.conf` conserva un proxy de `/api/*` hacia el Invoke
 URL. Apuntando `environment.prod.ts` a rutas relativas, el navegador ve todo en
