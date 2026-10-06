@@ -37,7 +37,7 @@ que este cambio no afecta nada de lo evaluado.
 |---|---|
 | `seg-ssh` | `SSH (22)` desde `My IP` |
 | `seg-apps` | `Custom TCP 8080-8085` desde `0.0.0.0/0` (por ahora) |
-| `seg-mq` | `5672` y `15672` desde `seg-apps` |
+| `seg-rabbit` | `5672`, `5673`, `15672` y `15673` desde `seg-apps` |
 | `seg-kafka` | `9092` desde `seg-apps`, `2181` desde sí mismo |
 | `seg-rds` | `PostgreSQL (5432)` desde `seg-apps` |
 
@@ -57,7 +57,7 @@ Igual que antes (`db.t3.micro`, engine PostgreSQL, `pedidos360-db`), con un deta
 
 **Instance profile (opcional):** si algún microservicio necesita llamar a otro servicio AWS (ej. SES para emails reales, S3), asignen el rol **`LabInstanceProfile`** ya existente al lanzar la instancia (EC2 → Advanced details → IAM instance profile). Para lo que necesitamos ahora (Docker Compose con los microservicios) no es obligatorio.
 
-Lanzamiento (**EC2 → Launch instance**), repetido para `ec2-apps` y `ec2-mq-kafka`:
+Lanzamiento (**EC2 → Launch instance**), repetido para `ec2-apps`, `ec2-rabbit` y `ec2-kafka`:
 
 1. AMI: **Amazon Linux 2023**.
 2. Instance type: `t3.small` (si el lab restringe tipos, prueben `t2.micro`/`t3.micro` como fallback).
@@ -102,9 +102,9 @@ Sin cambios respecto a la guía anterior: crear el HTTP API `pedidos360-api`, ru
 
 - [ ] Confirmada la región permitida (Region restriction del lab) y usada consistentemente.
 - [ ] VPC default y subnets verificadas (sin crear nada nuevo).
-- [ ] 5 Security Groups creados (`seg-ssh`, `seg-apps`, `seg-mq`, `seg-kafka`, `seg-rds`).
+- [ ] 5 Security Groups creados (`seg-ssh`, `seg-apps`, `seg-rabbit`, `seg-kafka`, `seg-rds`).
 - [ ] RDS `pedidos360-db` disponible, endpoint copiado (verificar clase de instancia disponible en el lab).
-- [ ] `ec2-apps` y `ec2-mq-kafka` corriendo con **Amazon Linux 2023**, Docker + Compose verificados por SSH.
+- [ ] `ec2-apps`, `ec2-rabbit` y `ec2-kafka` corriendo con **Amazon Linux 2023**, Docker + Compose verificados por SSH.
 - [ ] Key pair `vockey` (o propia) descargada y fuera del repo.
 - [ ] API Gateway `pedidos360-api` creado con Invoke URL.
 - [ ] Entendido el ciclo de sesión: **Start Lab → trabajar → al volver, reiniciar instancias EC2 detenidas y refrescar credenciales CLI si las usan.**

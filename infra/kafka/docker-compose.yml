@@ -1,4 +1,4 @@
-# Zookeeper + 1 broker Kafka (MVP), para ec2-mq-kafka.
+# Zookeeper + 1 broker Kafka (MVP), para ec2-kafka.
 # Usar la IP PRIVADA de esta instancia en KAFKA_ADVERTISED_LISTENERS: es la
 # direccion que ms-orders/ms-report/ms-audit van a marcar para conectarse, y
 # tiene que ser alcanzable desde ec2-apps. No usar localhost ni la IP publica.

@@ -1,16 +1,67 @@
-# RabbitMQ con management UI, para ec2-mq.
+# Cluster RabbitMQ de dos nodos, para ec2-rabbit.
+#
+# Los dos nodos corren como contenedores en el mismo host y se descubren por
+# la red interna de Docker. Eso deja todo el trafico entre nodos (epmd 4369 e
+# inter-node 25672) dentro del host, asi que el Security Group solo necesita
+# abrir los puertos de cliente y de consola.
+#
+# El nombre de nodo de RabbitMQ se deriva del hostname del contenedor, por eso
+# `hostname:` tiene que coincidir con lo que declara conf/20-cluster.conf
+# (rabbit@rabbit1 y rabbit@rabbit2). Como el hostname es igual al nombre del
+# servicio, el DNS interno de compose tambien resuelve.
 services:
-  rabbitmq:
+  rabbit1:
     image: rabbitmq:3.13-management
+    hostname: rabbit1
     ports:
-      - "5672:5672"   # AMQP
-      - "15672:15672" # Management UI
+      - "5672:5672"    # AMQP nodo 1
+      - "15672:15672"  # Management UI nodo 1
     environment:
+      # La cookie de Erlang tiene que ser identica en los dos nodos: es el
+      # secreto compartido con el que se autentican entre si. Si difieren, cada
+      # uno levanta bien por separado pero el join_cluster falla.
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:?falta RABBITMQ_ERLANG_COOKIE en infra/mq/.env}
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
+      - rabbit1-data:/var/lib/rabbitmq
+      - ./conf/20-cluster.conf:/etc/rabbitmq/conf.d/20-cluster.conf:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  rabbit2:
+    image: rabbitmq:3.13-management
+    hostname: rabbit2
+    ports:
+      - "5673:5672"    # AMQP nodo 2
+      - "15673:15672"  # Management UI nodo 2
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:?falta RABBITMQ_ERLANG_COOKIE en infra/mq/.env}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - rabbit2-data:/var/lib/rabbitmq
+      - ./conf/20-cluster.conf:/etc/rabbitmq/conf.d/20-cluster.conf:ro
+    # Esperar a que rabbit1 este sano no es cosmetico: con descubrimiento por
+    # lista estatica, si los dos nodos arrancan a la vez cada uno puede decidir
+    # que es el primero y formar su propio cluster de un nodo. Arrancando en
+    # orden, rabbit2 encuentra a rabbit1 ya formado y se une a el.
+    depends_on:
+      rabbit1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     restart: unless-stopped
 
 volumes:
-  rabbitmq-data:
+  rabbit1-data:
+  rabbit2-data:

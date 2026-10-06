@@ -1,14 +1,14 @@
 /**
  * Entorno de desarrollo: `ng serve` en http://localhost:4200.
  *
- * Las llamadas van al API Gateway desplegado, no a microservicios locales:
- * el CORS del Gateway ya admite http://localhost:4200 como origen, asi que se
- * puede desarrollar el frontend contra el backend real sin levantar nada mas.
- * Para trabajar contra servicios corriendo en la propia maquina, reemplazar
- * las URLs de abajo por http://localhost:8080 a 8084.
+ * Las llamadas van directo a cada microservicio corriendo en el host, sin pasar
+ * por el API Gateway: en local el Gateway no existe. Cada microservicio admite
+ * http://localhost:4200 como origen (`allowed-origins` en su perfil `local`),
+ * asi que el preflight de CORS lo resuelve el propio servicio.
+ *
+ * Para desarrollar contra el backend desplegado en AWS, reemplazar las URLs de
+ * abajo por el Invoke URL del Gateway, que es lo que hace environment.prod.ts.
  */
-const API_GATEWAY_URL = 'https://7x6u8dfoh0.execute-api.us-east-1.amazonaws.com';
-
 export const environment = {
   production: false,
   msal: {
@@ -19,9 +19,9 @@ export const environment = {
   },
   apiScopes: ['api://d0120ca1-1d51-493b-9eaa-1121b5b7303a/access_as_user'],
   api: {
-    orders: `${API_GATEWAY_URL}/api/orders`,
-    catalog: `${API_GATEWAY_URL}/api/catalog`,
-    report: `${API_GATEWAY_URL}/api/report`,
-    audit: `${API_GATEWAY_URL}/api/audit`,
+    orders: 'http://localhost:8080/api/orders',
+    catalog: 'http://localhost:8081/api/catalog',
+    report: 'http://localhost:8083/api/report',
+    audit: 'http://localhost:8084/api/audit',
   },
 };

@@ -31,8 +31,10 @@ Navegador
                          │
          ┌───────────────┼────────────────┐
          ▼               ▼                ▼
-    RDS PostgreSQL   ec2-mq-kafka     ec2-mq-kafka
-    (4 esquemas)     RabbitMQ :5672   Kafka :9092 + Zookeeper
+    RDS PostgreSQL   ec2-rabbit          ec2-kafka
+    (4 esquemas)     Cluster RabbitMQ    Kafka :9092 + Zookeeper
+                     rabbit1 :5672
+                     rabbit2 :5673
 ```
 
 El navegador nunca habla directo con los microservicios: las llamadas a la API
@@ -51,8 +53,9 @@ todo vuelve a viajar por el mismo origen y CORS deja de intervenir.
 | 8083 | ms-report | ec2-apps |
 | 8084 | ms-audit | ec2-apps |
 | 8085 | Nginx: frontend (y proxy de la API como respaldo) | ec2-apps |
-| 5672 / 15672 | RabbitMQ y su consola | ec2-mq-kafka |
-| 9092 / 2181 | Kafka y Zookeeper | ec2-mq-kafka |
+| 5672 / 15672 | RabbitMQ nodo 1 y su consola | ec2-rabbit |
+| 5673 / 15673 | RabbitMQ nodo 2 y su consola | ec2-rabbit |
+| 9092 / 2181 | Kafka y Zookeeper | ec2-kafka |
 | 5432 | PostgreSQL | RDS |
 
 ---
@@ -169,7 +172,7 @@ Crear cinco Security Groups en **EC2 → Security Groups**. AWS reserva el prefi
 |---|---|
 | `seg-ssh` | SSH (22) desde *My IP* |
 | `seg-apps` | TCP 8080-8085 desde `0.0.0.0/0` |
-| `seg-mq` | TCP 5672 y 15672 desde `seg-apps` |
+| `seg-rabbit` | TCP 5672, 5673, 15672 y 15673 desde `seg-apps` |
 | `seg-kafka` | TCP 9092 desde `seg-apps`, TCP 2181 desde si mismo |
 | `seg-rds` | PostgreSQL (5432) desde `seg-apps` |
 
@@ -194,15 +197,19 @@ los esquemas y las tablas al arrancar.
 
 ## 4. Instancias EC2
 
-Lanzar dos, ambas con Amazon Linux 2023 y el key pair del laboratorio:
+Lanzar tres, todas con Amazon Linux 2023 y el key pair del laboratorio:
 
 | Nombre | Tipo | Security groups |
 |---|---|---|
 | `ec2-apps` | `t3.medium` | `seg-ssh`, `seg-apps` |
-| `ec2-mq-kafka` | `t3.small` | `seg-ssh`, `seg-mq`, `seg-kafka` |
+| `ec2-rabbit` | `t3.medium` | `seg-ssh`, `seg-rabbit` |
+| `ec2-kafka` | `t3.small` | `seg-ssh`, `seg-kafka` |
 
 El tamano de `ec2-apps` importa: corre cinco JVM mas Nginx, y con 2 GB de RAM el
 sistema entra en falta de memoria y las compilaciones lo dejan sin responder.
+
+RabbitMQ y Kafka van en instancias separadas porque el cluster de RabbitMQ son
+dos nodos, y los dos mas Kafka y Zookeeper no caben en una `t3.small`.
 
 En **Advanced details → User data** de ambas, para instalar Docker:
 
@@ -232,12 +239,32 @@ sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 ## 5. Mensajeria
 
-En `ec2-mq-kafka`, copiar `infra/mq` e `infra/kafka` y levantarlos:
+### 5.1 Cluster RabbitMQ en `ec2-rabbit`
 
 ```bash
-scp -i labsuser.pem -r infra/mq infra/kafka ec2-user@<ip-publica-mq>:~/
-ssh -i labsuser.pem ec2-user@<ip-publica-mq>
-cd ~/mq    && sudo docker compose up -d
+scp -i labsuser.pem -r infra/mq ec2-user@<ip-publica-rabbit>:~/
+ssh -i labsuser.pem ec2-user@<ip-publica-rabbit>
+cd ~/mq
+cp .env.example .env
+sed -i "s/^RABBITMQ_ERLANG_COOKIE=.*/RABBITMQ_ERLANG_COOKIE=$(openssl rand -hex 32)/" .env
+sudo docker compose up -d
+```
+
+La cookie de Erlang es el secreto compartido con el que los dos nodos se
+autentican entre si. Tiene que ser identica en ambos, y por eso se define una
+sola vez en `.env`: el compose se la pasa a los dos contenedores.
+
+Verificar que el cluster se formo (tienen que aparecer los dos nodos):
+
+```bash
+sudo docker exec mq-rabbit1-1 rabbitmq-diagnostics -q cluster_status
+```
+
+### 5.2 Kafka en `ec2-kafka`
+
+```bash
+scp -i labsuser.pem -r infra/kafka ec2-user@<ip-publica-kafka>:~/
+ssh -i labsuser.pem ec2-user@<ip-publica-kafka>
 cd ~/kafka && sudo docker compose up -d
 ```
 
@@ -271,10 +298,12 @@ DB_USER=pedidos360_app
 DB_PASSWORD="la-contrasena"      # entre comillas si tiene # u otros simbolos
 DDL_AUTO=update
 
-RABBITMQ_HOST=<ip-privada-de-ec2-mq-kafka>
+# Los dos nodos del cluster, separados por coma. Spring los intenta en orden
+# y hace failover al segundo si el primero no responde.
+RABBITMQ_ADDRESSES=<ip-privada-de-ec2-rabbit>:5672,<ip-privada-de-ec2-rabbit>:5673
 RABBITMQ_USER=guest
 RABBITMQ_PASSWORD=guest
-KAFKA_BOOTSTRAP_SERVERS=<ip-privada-de-ec2-mq-kafka>:9092
+KAFKA_BOOTSTRAP_SERVERS=<ip-privada-de-ec2-kafka>:9092
 
 AZURE_ISSUER_URI=https://login.microsoftonline.com/<tenant-id>/v2.0
 AZURE_AUDIENCES=api://<client-id>,<client-id>
@@ -437,17 +466,79 @@ servicios, lo que permite seguir una operacion de punta a punta.
 
 ## 9. Ejecucion local, sin AWS
 
-Para desarrollar sin desplegar nada:
+Es el modo recomendado para desarrollar. No hace falta nada de AWS: ni EC2, ni
+RDS, ni API Gateway.
+
+El reparto es deliberado. La **infraestructura va en Docker**, porque no tiene
+sentido instalarla a mano; los **microservicios corren en la JVM del host**,
+porque asi no hay que reconstruir una imagen por cada cambio y se puede
+enganchar el debugger.
+
+### 9.1 Infraestructura
 
 ```bash
-docker compose -f infra/mq/docker-compose.yml up -d
-docker compose -f infra/kafka/docker-compose.yml up -d   # KAFKA_ADVERTISED_HOST=localhost
+docker compose -f infra/local/docker-compose.yml up -d
 ```
 
-Con un PostgreSQL local y la base `pedidos360` creada, cada microservicio se
-levanta con `mvn spring-boot:run` tomando su `.env`. El frontend con `npm start`
-usa `environment.ts`, que apunta a cada microservicio en localhost en vez de
-pasar por el API Gateway.
+Levanta PostgreSQL, el cluster de RabbitMQ (los mismos dos nodos que en la
+nube) y Kafka con Zookeeper.
+
+| Puerto | Servicio |
+|---|---|
+| 5434 | PostgreSQL (no 5432: ese puerto suele estar tomado) |
+| 5672 / 15672 | RabbitMQ nodo 1 y su consola |
+| 5673 / 15673 | RabbitMQ nodo 2 y su consola |
+| 9092 | Kafka |
+
+Las consolas de RabbitMQ se abren en `http://localhost:15672` y
+`http://localhost:15673` con `guest` / `guest`. En **Overview → Nodes** se ven
+los dos nodos del cluster.
+
+Verificar que el cluster se formo:
+
+```bash
+docker exec local-rabbit1-1 rabbitmq-diagnostics -q cluster_status
+```
+
+### 9.2 Microservicios
+
+Cada uno tiene un perfil `dev` versionado que ya apunta a esa infraestructura,
+asi que un clon nuevo del repo arranca sin configurar nada:
+
+```bash
+cd ms-pedidos360-orders && mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Lo mismo para `catalog`, `notify`, `report` y `audit`, cada uno en su terminal.
+Los esquemas de base de datos, las colas de RabbitMQ y los topicos de Kafka se
+crean solos al arrancar.
+
+Comprobacion rapida, con todo levantado:
+
+```bash
+# Health de los cinco
+for p in 8080 8081 8082 8083 8084; do curl -s -o /dev/null -w "$p: %{http_code}\n" http://localhost:$p/actuator/health; done
+
+# Sin token tiene que dar 401
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/orders
+```
+
+### 9.3 Frontend
+
+```bash
+cd frontend-pedidos360 && npm start
+```
+
+`environment.ts` apunta directo a cada microservicio en localhost, sin pasar por
+el API Gateway, que en local no existe. El login si usa el tenant real de Azure
+AD: la identidad es lo unico que no se puede levantar en local.
+
+### 9.4 Bajar todo
+
+```bash
+docker compose -f infra/local/docker-compose.yml down     # conserva los datos
+docker compose -f infra/local/docker-compose.yml down -v  # borra tambien los volumenes
+```
 
 La documentacion de cada API queda en `http://localhost:<puerto>/swagger-ui.html`.
 

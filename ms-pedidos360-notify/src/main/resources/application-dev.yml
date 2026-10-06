@@ -1,0 +1,23 @@
+# Perfil de desarrollo local, sin AWS.
+#
+# Se activa con:
+#   mvn spring-boot:run -Dspring-boot.run.profiles=dev
+#
+# Este archivo SI se versiona: son valores de desarrollo compartidos, para que
+# un clon nuevo del repo arranque sin configurar nada. No poner secretos aca.
+# Para overrides personales existe application-local.yml, que esta en .gitignore.
+#
+# Apunta a la infraestructura que levanta infra/local/docker-compose.yml.
+# El tenant de Azure AD es el real: la identidad es lo unico que no se puede
+# levantar en local, y de todos modos no es AWS. Esos IDs ya estan en el repo
+# (frontend-pedidos360/src/environments/environment.ts), no son secretos.
+
+spring:
+  rabbitmq:
+    # Los dos nodos del cluster local (infra/local/docker-compose.yml).
+    addresses: localhost:5672,localhost:5673
+
+security:
+  issuer-uri: https://login.microsoftonline.com/2d0922c9-f3ff-4709-b9b7-0c4b54529639/v2.0
+  audiences: api://d0120ca1-1d51-493b-9eaa-1121b5b7303a,d0120ca1-1d51-493b-9eaa-1121b5b7303a
+  allowed-origins: http://localhost:4200

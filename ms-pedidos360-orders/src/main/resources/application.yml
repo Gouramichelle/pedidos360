@@ -17,8 +17,12 @@ spring:
         default_schema: ${DB_SCHEMA:orders}
       jakarta.persistence.create-database-schemas: true
   rabbitmq:
-    host: ${RABBITMQ_HOST}
-    port: ${RABBITMQ_PORT:5672}
+    # Los dos nodos del cluster, separados por coma. Spring los intenta en
+    # orden y hace failover al segundo si el primero no responde, que es lo
+    # que hace que el cluster sirva de algo y no sea solo decorativo.
+    # Sin valor por defecto a proposito: si falta la variable el servicio no
+    # arranca, en vez de quedarse esperando a un broker que no existe.
+    addresses: ${RABBITMQ_ADDRESSES}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASSWORD:guest}
   kafka:

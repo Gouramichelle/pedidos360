@@ -1,0 +1,98 @@
+# Stack de infraestructura para desarrollo local, sin AWS.
+#
+# Levanta solo lo que no tiene sentido correr a mano: base de datos, el cluster
+# de RabbitMQ y Kafka. Los microservicios NO van aca a proposito: corren en la
+# JVM del host con `mvn spring-boot:run -Dspring-boot.run.profiles=local`, que
+# evita reconstruir una imagen por cada cambio y permite enganchar el debugger.
+#
+#   docker compose -f infra/local/docker-compose.yml up -d
+#
+# Las credenciales de abajo son de desarrollo y estan a la vista a proposito:
+# este archivo nunca se usa fuera de localhost.
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      # 5434 y no 5432: el puerto estandar suele estar tomado por otro postgres
+      # en la maquina de desarrollo. Dentro del contenedor sigue siendo 5432.
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: pedidos360
+      POSTGRES_USER: pedidos360
+      POSTGRES_PASSWORD: pedidos360
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pedidos360 -d pedidos360"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # --- Cluster RabbitMQ: misma topologia que en la nube, dos nodos ---
+  rabbit1:
+    image: rabbitmq:3.13-management
+    hostname: rabbit1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: cookie-de-desarrollo-local
+    volumes:
+      - rabbit1-data:/var/lib/rabbitmq
+      - ../mq/conf/20-cluster.conf:/etc/rabbitmq/conf.d/20-cluster.conf:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  rabbit2:
+    image: rabbitmq:3.13-management
+    hostname: rabbit2
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: cookie-de-desarrollo-local
+    volumes:
+      - rabbit2-data:/var/lib/rabbitmq
+      - ../mq/conf/20-cluster.conf:/etc/rabbitmq/conf.d/20-cluster.conf:ro
+    depends_on:
+      rabbit1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # --- Kafka: se mantiene, es lo unico que alimenta ms-audit y ms-report ---
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      # Los microservicios corren en el host, asi que Kafka tiene que anunciarse
+      # como localhost y no con el nombre del contenedor.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Igual que en la nube: los topicos los declaran los propios servicios.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+volumes:
+  postgres-data:
+  rabbit1-data:
+  rabbit2-data:
