@@ -36,7 +36,7 @@ que este cambio no afecta nada de lo evaluado.
 | Security Group | Reglas de entrada |
 |---|---|
 | `seg-ssh` | `SSH (22)` desde `My IP` |
-| `seg-apps` | `Custom TCP 8080-8085` desde `0.0.0.0/0` (por ahora) |
+| `seg-apps` | `Custom TCP 8080-8086` desde `0.0.0.0/0` (por ahora) |
 | `seg-rabbit` | `5672`, `5673`, `15672` y `15673` desde `seg-apps` |
 | `seg-kafka` | `9092` desde `seg-apps`, `2181` desde sí mismo |
 | `seg-rds` | `PostgreSQL (5432)` desde `seg-apps` |

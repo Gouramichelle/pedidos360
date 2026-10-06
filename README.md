@@ -8,6 +8,7 @@ frontend-pedidos360/     Angular 18 + MSAL
 ms-pedidos360-orders/    Spring Boot 3 — pedidos, maquina de estados, productor Kafka/RabbitMQ
 ms-pedidos360-catalog/   Spring Boot 3 — catalogo de productos y stock
 ms-pedidos360-notify/    Spring Boot 3 — consumer RabbitMQ, sin DB, sin API publica
+ms-pedidos360-mqadmin/   Spring Boot 3 — administra la topologia de RabbitMQ, sin DB
 ms-pedidos360-report/    Spring Boot 3 — consumer Kafka, KPIs de solo lectura
 ms-pedidos360-audit/     Spring Boot 3 — consumer Kafka, auditoria de solo lectura
 infra/                   docker-compose para apps, RabbitMQ y Kafka+Zookeeper
@@ -25,8 +26,8 @@ Navegador
                  CORS configurado para el origen del frontend
                          │  (valida el token antes de enrutar)
                          ▼
-                 ec2-apps :8080-8084
-                 5 microservicios Spring Boot
+                 ec2-apps :8080-8086
+                 6 microservicios Spring Boot
                  cada uno revalida el JWT
                          │
          ┌───────────────┼────────────────┐
@@ -53,6 +54,7 @@ todo vuelve a viajar por el mismo origen y CORS deja de intervenir.
 | 8083 | ms-report | ec2-apps |
 | 8084 | ms-audit | ec2-apps |
 | 8085 | Nginx: frontend (y proxy de la API como respaldo) | ec2-apps |
+| 8086 | ms-mqadmin (administracion de la topologia) | ec2-apps |
 | 5672 / 15672 | RabbitMQ nodo 1 y su consola | ec2-rabbit |
 | 5673 / 15673 | RabbitMQ nodo 2 y su consola | ec2-rabbit |
 | 9092 / 2181 | Kafka y Zookeeper | ec2-kafka |
@@ -171,7 +173,7 @@ Crear cinco Security Groups en **EC2 → Security Groups**. AWS reserva el prefi
 | Nombre | Reglas de entrada |
 |---|---|
 | `seg-ssh` | SSH (22) desde *My IP* |
-| `seg-apps` | TCP 8080-8085 desde `0.0.0.0/0` |
+| `seg-apps` | TCP 8080-8086 desde `0.0.0.0/0` |
 | `seg-rabbit` | TCP 5672, 5673, 15672 y 15673 desde `seg-apps` |
 | `seg-kafka` | TCP 9092 desde `seg-apps`, TCP 2181 desde si mismo |
 | `seg-rds` | PostgreSQL (5432) desde `seg-apps` |
@@ -205,7 +207,7 @@ Lanzar tres, todas con Amazon Linux 2023 y el key pair del laboratorio:
 | `ec2-rabbit` | `t3.medium` | `seg-ssh`, `seg-rabbit` |
 | `ec2-kafka` | `t3.small` | `seg-ssh`, `seg-kafka` |
 
-El tamano de `ec2-apps` importa: corre cinco JVM mas Nginx, y con 2 GB de RAM el
+El tamano de `ec2-apps` importa: corre seis JVM mas Nginx, y con 2 GB de RAM el
 sistema entra en falta de memoria y las compilaciones lo dejan sin responder.
 
 RabbitMQ y Kafka van en instancias separadas porque el cluster de RabbitMQ son
@@ -509,15 +511,16 @@ asi que un clon nuevo del repo arranca sin configurar nada:
 cd ms-pedidos360-orders && mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Lo mismo para `catalog`, `notify`, `report` y `audit`, cada uno en su terminal.
+Lo mismo para `catalog`, `notify`, `report`, `audit` y `mqadmin`, cada uno en su
+terminal.
 Los esquemas de base de datos, las colas de RabbitMQ y los topicos de Kafka se
 crean solos al arrancar.
 
 Comprobacion rapida, con todo levantado:
 
 ```bash
-# Health de los cinco
-for p in 8080 8081 8082 8083 8084; do curl -s -o /dev/null -w "$p: %{http_code}\n" http://localhost:$p/actuator/health; done
+# Health de los seis
+for p in 8080 8081 8082 8083 8084 8086; do curl -s -o /dev/null -w "$p: %{http_code}\n" http://localhost:$p/actuator/health; done
 
 # Sin token tiene que dar 401
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/orders
@@ -541,6 +544,65 @@ docker compose -f infra/local/docker-compose.yml down -v  # borra tambien los vo
 ```
 
 La documentacion de cada API queda en `http://localhost:<puerto>/swagger-ui.html`.
+
+---
+
+## Administracion de la topologia de RabbitMQ
+
+`ms-pedidos360-mqadmin` expone una API REST para crear y eliminar colas,
+exchanges y bindings en caliente, sin reiniciar ningun servicio ni entrar a la
+consola del broker.
+
+| Metodo | Ruta | Que hace |
+|---|---|---|
+| `POST` | `/api/mqadmin/queues` | Declara una cola |
+| `GET` | `/api/mqadmin/queues/{nombre}` | Mensajes encolados y consumidores |
+| `DELETE` | `/api/mqadmin/queues/{nombre}` | Elimina la cola |
+| `DELETE` | `/api/mqadmin/queues/{nombre}/messages` | Vacia la cola sin borrarla |
+| `POST` | `/api/mqadmin/exchanges` | Declara un exchange |
+| `DELETE` | `/api/mqadmin/exchanges/{nombre}` | Elimina el exchange |
+| `POST` | `/api/mqadmin/bindings` | Une un exchange con una cola |
+| `DELETE` | `/api/mqadmin/bindings?cola=&exchange=&routingKey=` | Deshace esa union |
+
+Ejemplo de creacion de una cola con dead-lettering:
+
+```bash
+curl -X POST http://localhost:8086/api/mqadmin/queues \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "nombre": "q.cmd.reportes",
+        "durable": true,
+        "deadLetterExchange": "cmd.dead.dlx",
+        "deadLetterRoutingKey": "reportes.fallo"
+      }'
+```
+
+**Solo rol Admin.** Estos endpoints pueden borrar las colas de las que depende
+el resto del sistema, asi que no se abren a Operador ni a Cliente. El token se
+valida igual que en los demas microservicios: firma, issuer, vigencia y
+audiencia.
+
+### Como esta organizado
+
+`RabbitAdminService` es el unico punto del servicio que importa
+`org.springframework.amqp`. Los controladores reciben y devuelven tipos
+propios, y toda la traduccion a `Queue`, `Exchange` y `Binding` ocurre ahi
+dentro. El reparto es: la capa web valida formato (nombres vacios, caracteres
+admitidos, longitud) con anotaciones sobre los DTOs; el servicio valida las
+reglas del broker (el prefijo `amq.` esta reservado, los tipos de exchange
+validos) y traduce los errores de AMQP.
+
+### Dos comportamientos del broker que vale la pena conocer
+
+**Borrar una cola que no existe devuelve exito.** El borrado en AMQP es
+idempotente, asi que `deleteQueue` responde `true` aunque no haya nada que
+borrar. Por eso el servicio consulta la existencia antes: sin eso, un `DELETE`
+con el nombre mal escrito respondia 204 y daba a entender que borro algo.
+
+**Con los exchanges no se puede hacer lo mismo**, porque `AmqpAdmin` no ofrece
+forma de consultar si uno existe. Ese `DELETE` responde 204 siempre, que es el
+comportamiento correcto para una operacion idempotente.
 
 ---
 

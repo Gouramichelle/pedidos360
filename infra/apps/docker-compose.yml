@@ -1,6 +1,6 @@
-# Los 5 microservicios de Pedidos360, para ec2-apps.
+# Los 6 microservicios de Pedidos360, para ec2-apps.
 # Cada imagen se construye desde su propio repo (build context relativo);
-# en EC2 hay que clonar los 5 repos como hermanos de /infra antes de levantar
+# en EC2 hay que clonar los 6 repos como hermanos de /infra antes de levantar
 # esto, o reemplazar `build:` por `image:` apuntando a un registry.
 services:
   ms-orders:
@@ -94,6 +94,19 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DDL_AUTO: ${DDL_AUTO:-update}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      AZURE_ISSUER_URI: ${AZURE_ISSUER_URI}
+      AZURE_AUDIENCES: ${AZURE_AUDIENCES}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:4200}
+    restart: unless-stopped
+
+  ms-mqadmin:
+    build: ../../ms-pedidos360-mqadmin
+    ports:
+      - "8086:8086"
+    environment:
+      RABBITMQ_ADDRESSES: ${RABBITMQ_ADDRESSES}
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       AZURE_ISSUER_URI: ${AZURE_ISSUER_URI}
       AZURE_AUDIENCES: ${AZURE_AUDIENCES}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:4200}

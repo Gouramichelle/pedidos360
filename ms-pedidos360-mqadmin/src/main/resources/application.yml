@@ -1,0 +1,37 @@
+server:
+  port: ${SERVER_PORT:8086}
+
+spring:
+  application:
+    name: ms-pedidos360-mqadmin
+  rabbitmq:
+    # Los dos nodos del cluster, separados por coma. Sin valor por defecto a
+    # proposito: si falta la variable el servicio no arranca, en vez de quedarse
+    # esperando a un broker que no existe.
+    addresses: ${RABBITMQ_ADDRESSES}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# Ninguno de estos valores tiene default: si falta uno la app no levanta,
+# que es preferible a levantar con una config de seguridad incompleta.
+security:
+  issuer-uri: ${AZURE_ISSUER_URI}
+  audiences: ${AZURE_AUDIENCES}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    cl.pedidos360: INFO
