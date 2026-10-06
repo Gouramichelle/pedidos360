@@ -606,6 +606,63 @@ comportamiento correcto para una operacion idempotente.
 
 ---
 
+## Confirmacion de mensajes en los consumidores
+
+Los consumidores de RabbitMQ corren en modo **MANUAL**: ningun mensaje se da
+por procesado hasta que el codigo lo confirma explicitamente. La decision vive
+completa en una sola clase,
+[`ConfirmacionDeMensajes`](ms-pedidos360-notify/src/main/java/cl/pedidos360/notify/messaging/comun/ConfirmacionDeMensajes.java),
+que todos los listeners reutilizan, de modo que la politica es identica en
+todas las colas.
+
+Hay exactamente tres salidas, y cada una deja su propio log:
+
+| Situacion | Llamada al broker | Que pasa con el mensaje |
+|---|---|---|
+| El trabajo termina bien | `basicAck(tag, false)` | Se descarta, ya se proceso |
+| `ErrorRecuperable` y quedan intentos | `basicNack(tag, false, true)` | Vuelve a la cola |
+| `ErrorRecuperable` sin intentos, `ErrorNoRecuperable`, o excepcion inesperada | `basicNack(tag, false, false)` | Va a la DLQ |
+
+La diferencia entre los dos tipos de error es lo que decide la ruta.
+`ErrorRecuperable` es un fallo del entorno —el proveedor de correo caido, un
+timeout— y reintentarlo tiene sentido porque la causa puede desaparecer sola.
+`ErrorNoRecuperable` es un fallo del mensaje mismo —viene sin cliente, sin
+pedido, sin estado— y reintentarlo daria exactamente el mismo resultado.
+
+Una excepcion que no sea ninguna de las dos se trata como no recuperable a
+proposito: si no se sabe por que fallo, reintentar a ciegas puede dejar el
+mensaje girando y bloqueando a los que vienen detras. Es preferible la DLQ, que
+es visible y revisable, antes que un bucle silencioso.
+
+**Los intentos se cuentan en el servicio, no en el broker.** AMQP marca las
+reentregas con un flag pero no lleva un numero, asi que el contador vive en
+memoria indexado por `eventId`. Alcanza mientras haya un consumidor por cola;
+con varias instancias habria que moverlo a algo compartido, o pasar a colas de
+reintento con TTL donde la cuenta la lleve el propio broker.
+
+### Comprobarlo en vivo
+
+Con el entorno local levantado, publicando un mensaje sin `customerId`:
+
+```bash
+curl -u guest:guest -X POST "http://localhost:15672/api/exchanges/%2F/cmd.topic/publish" \
+  -H "content-type: application/json" \
+  -d '{"properties":{"content_type":"application/json"},
+       "routing_key":"email.send",
+       "payload":"{\"type\":\"EmailNotificationRequested\",\"eventId\":\"evt-malo\",\"payload\":{\"orderId\":2,\"customerId\":\"\",\"newStatus\":\"ACEPTADO\"}}",
+       "payload_encoding":"string"}'
+```
+
+El log del consumidor muestra la decision y el mensaje aparece en
+`q.cmd.email.dlq`:
+
+```
+ERROR c.p.n.m.comun.ConfirmacionDeMensajes : [q.cmd.email] Evento evt-malo no es
+recuperable, va directo a la DLQ: El evento evt-malo no indica a que cliente notificar
+```
+
+---
+
 ## Roles y su cobertura en el codigo
 
 El caso define los roles `Admin`, `Operador`, `Cliente` en la seccion de

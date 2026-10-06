@@ -13,15 +13,11 @@ spring:
     addresses: ${RABBITMQ_ADDRESSES}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASSWORD:guest}
-    listener:
-      simple:
-        # 3 reintentos con backoff antes de que el broker enrute a la DLQ
-        # (via x-dead-letter-exchange configurado en la cola).
-        retry:
-          enabled: true
-          max-attempts: 3
-          initial-interval: 1000
-          multiplier: 2.0
+    # Sin bloque listener.simple.retry a proposito: ese reintento lo hacia el
+    # framework en memoria, dentro del mismo consumo y sin que el broker se
+    # enterara. Ahora los consumidores corren en modo MANUAL y el reintento es
+    # un NACK con requeue de verdad. Ver RabbitListenerConfig y
+    # ConfirmacionDeMensajes.
 
 # ms-notify no expone API publica ni valida JWT (es un consumer interno),
 # pero mantiene issuer-uri/audiences por si en el futuro se le agrega un
