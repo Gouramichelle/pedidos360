@@ -650,11 +650,18 @@ mensajeria:
       patron-topic: kitchen.#
 ```
 
-`RabbitTopologyConfig` recorre ese bloque y declara, por cada flujo, la cola
-con su dead-lettering, la DLQ y los tres bindings. Los publishers consultan ahi
-donde escribir, y los listeners toman el nombre de su cola con
-`@RabbitListener(queues = "${mensajeria.flujos.kitchen.cola}")`. **Agregar un
-flujo nuevo es agregar una entrada en el yml**, sin escribir una clase.
+`RabbitTopologyConfig` declara un bean explicito por cada objeto -- la cola
+con su dead-lettering, la DLQ y los tres bindings, por cada uno de los tres
+flujos -- tomando todos los nombres de ese bloque. Los tres flujos tienen la
+misma forma, asi que la construccion se comparte en helpers privados, pero cada
+ruta se declara por separado y con nombre propio (`colaKitchen`,
+`bindKitchenDirect`, `bindKitchenDlq`) para que se pueda leer de corrido en el
+codigo.
+
+Los publishers consultan la configuracion para saber donde escribir, y los
+listeners toman el nombre de su cola con
+`@RabbitListener(queues = "${mensajeria.flujos.kitchen.cola}")`. Cambiar como
+se llama una cola es cambiar el yml, sin tocar una sola clase.
 
 El bloque tiene que ser identico en `ms-orders` y `ms-notify`: los dos declaran
 la misma topologia de forma idempotente por si uno arranca antes que el otro, y

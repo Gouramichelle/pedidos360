@@ -1,11 +1,7 @@
 package cl.pedidos360.orders.config;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Declarable;
-import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
@@ -15,19 +11,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Topologia de comandos de RabbitMQ, armada a partir del bloque "mensajeria"
- * del application.yml. No hay ni un nombre escrito en esta clase.
+ * Topologia de comandos de RabbitMQ: un bean explicito por cada objeto, con
+ * los nombres leidos del bloque "mensajeria" del application.yml.
  *
- * Por cada flujo configurado se declara la cola principal, su DLQ y tres
- * bindings:
- *   - en el exchange direct, con la routing key exacta
- *   - en el exchange topic, con el patron que admite comodines
- *   - la DLQ en el dead-letter exchange, con la misma routing key
+ * Los tres flujos del caso tienen la misma forma -- cola con dead-lettering,
+ * DLQ, y tres bindings (direct por clave exacta, topic por patron, y la DLQ
+ * colgada del dead-letter exchange) -- pero cada uno se declara por separado y
+ * con nombre propio, para que la ruta de cada caso de uso se pueda leer de
+ * corrido en el codigo.
  *
- * Se usa un unico bean Declarables en vez de un bean por objeto porque asi la
- * cantidad de flujos la decide el yml: agregar uno nuevo no agrega metodos.
- * RabbitAdmin declara todo lo que encuentre dentro de un Declarables igual que
- * si fueran beans sueltos.
+ * Lo que se repite es la construccion, no la configuracion: los helpers de
+ * abajo arman la cola y la DLQ a partir del flujo, y ningun nombre aparece
+ * escrito aqui. Cambiar como se llama una cola es cambiar el yml.
  *
  * ms-orders y ms-notify declaran esta misma topologia de forma idempotente,
  * por si uno arranca antes que el otro. Declarar dos veces la misma cola con
@@ -38,28 +33,133 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(MensajeriaProperties.class)
 public class RabbitTopologyConfig {
 
+    private static final String EMAIL = "email";
+    private static final String KITCHEN = "kitchen";
+    private static final String INVOICE = "invoice";
+
+    private final MensajeriaProperties mensajeria;
+
+    public RabbitTopologyConfig(MensajeriaProperties mensajeria) {
+        this.mensajeria = mensajeria;
+    }
+
+    // ------------------------------------------------------------ exchanges
+
     @Bean
-    Declarables topologiaDeComandos(MensajeriaProperties props) {
-        DirectExchange direct = new DirectExchange(props.exchanges().direct(), true, false);
-        TopicExchange topic = new TopicExchange(props.exchanges().topic(), true, false);
-        DirectExchange dlx = new DirectExchange(props.exchanges().dlx(), true, false);
+    DirectExchange cmdDirectExchange() {
+        return new DirectExchange(mensajeria.exchanges().direct(), true, false);
+    }
 
-        List<Declarable> declarables = new ArrayList<>(List.of(direct, topic, dlx));
+    @Bean
+    TopicExchange cmdTopicExchange() {
+        return new TopicExchange(mensajeria.exchanges().topic(), true, false);
+    }
 
-        props.flujos().forEach((dominio, flujo) -> {
-            Queue cola = QueueBuilder.durable(flujo.cola())
-                    .withArgument("x-dead-letter-exchange", props.exchanges().dlx())
-                    .withArgument("x-dead-letter-routing-key", flujo.routingKey())
-                    .build();
-            Queue dlq = QueueBuilder.durable(flujo.dlq()).build();
+    @Bean
+    DirectExchange cmdDeadLetterExchange() {
+        return new DirectExchange(mensajeria.exchanges().dlx(), true, false);
+    }
 
-            declarables.add(cola);
-            declarables.add(dlq);
-            declarables.add(BindingBuilder.bind(cola).to(direct).with(flujo.routingKey()));
-            declarables.add(BindingBuilder.bind(cola).to(topic).with(flujo.patronTopic()));
-            declarables.add(BindingBuilder.bind(dlq).to(dlx).with(flujo.routingKey()));
-        });
+    // ------------------------------------------- flujo email: notificaciones
 
-        return new Declarables(declarables);
+    @Bean
+    Queue colaEmail() {
+        return colaDeFlujo(EMAIL);
+    }
+
+    @Bean
+    Queue colaEmailDlq() {
+        return dlqDeFlujo(EMAIL);
+    }
+
+    @Bean
+    Binding bindEmailDirect() {
+        return BindingBuilder.bind(colaEmail()).to(cmdDirectExchange()).with(routingKey(EMAIL));
+    }
+
+    @Bean
+    Binding bindEmailTopic() {
+        return BindingBuilder.bind(colaEmail()).to(cmdTopicExchange()).with(patronTopic(EMAIL));
+    }
+
+    @Bean
+    Binding bindEmailDlq() {
+        return BindingBuilder.bind(colaEmailDlq()).to(cmdDeadLetterExchange()).with(routingKey(EMAIL));
+    }
+
+    // ------------------------------------------------- flujo kitchen: cocina
+
+    @Bean
+    Queue colaKitchen() {
+        return colaDeFlujo(KITCHEN);
+    }
+
+    @Bean
+    Queue colaKitchenDlq() {
+        return dlqDeFlujo(KITCHEN);
+    }
+
+    @Bean
+    Binding bindKitchenDirect() {
+        return BindingBuilder.bind(colaKitchen()).to(cmdDirectExchange()).with(routingKey(KITCHEN));
+    }
+
+    @Bean
+    Binding bindKitchenTopic() {
+        return BindingBuilder.bind(colaKitchen()).to(cmdTopicExchange()).with(patronTopic(KITCHEN));
+    }
+
+    @Bean
+    Binding bindKitchenDlq() {
+        return BindingBuilder.bind(colaKitchenDlq()).to(cmdDeadLetterExchange()).with(routingKey(KITCHEN));
+    }
+
+    // -------------------------------------------- flujo invoice: facturacion
+
+    @Bean
+    Queue colaInvoice() {
+        return colaDeFlujo(INVOICE);
+    }
+
+    @Bean
+    Queue colaInvoiceDlq() {
+        return dlqDeFlujo(INVOICE);
+    }
+
+    @Bean
+    Binding bindInvoiceDirect() {
+        return BindingBuilder.bind(colaInvoice()).to(cmdDirectExchange()).with(routingKey(INVOICE));
+    }
+
+    @Bean
+    Binding bindInvoiceTopic() {
+        return BindingBuilder.bind(colaInvoice()).to(cmdTopicExchange()).with(patronTopic(INVOICE));
+    }
+
+    @Bean
+    Binding bindInvoiceDlq() {
+        return BindingBuilder.bind(colaInvoiceDlq()).to(cmdDeadLetterExchange()).with(routingKey(INVOICE));
+    }
+
+    // ------------------------------------------------------------- internos
+
+    /** Cola principal del flujo, con los mensajes rechazados enrutados al DLX. */
+    private Queue colaDeFlujo(String flujo) {
+        return QueueBuilder.durable(mensajeria.flujo(flujo).cola())
+                .withArgument("x-dead-letter-exchange", mensajeria.exchanges().dlx())
+                .withArgument("x-dead-letter-routing-key", routingKey(flujo))
+                .build();
+    }
+
+    private Queue dlqDeFlujo(String flujo) {
+        return QueueBuilder.durable(mensajeria.flujo(flujo).dlq()).build();
+    }
+
+    private String routingKey(String flujo) {
+        return mensajeria.flujo(flujo).routingKey();
+    }
+
+    private String patronTopic(String flujo) {
+        return mensajeria.flujo(flujo).patronTopic();
     }
 }
