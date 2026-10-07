@@ -1,4 +1,4 @@
-package cl.pedidos360.notify.messaging;
+package cl.pedidos360.notify.messaging.email;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +14,7 @@ import com.rabbitmq.client.Channel;
 
 import cl.pedidos360.notify.messaging.comun.ConfirmacionDeMensajes;
 import cl.pedidos360.notify.messaging.comun.ErrorNoRecuperable;
+import cl.pedidos360.notify.messaging.comun.EventEnvelope;
 
 /**
  * Consumer sin JWT, interno: no esta expuesto por el API Gateway ni por
@@ -28,7 +29,8 @@ import cl.pedidos360.notify.messaging.comun.ErrorNoRecuperable;
 public class EmailNotificationListener {
 
     private static final Logger log = LoggerFactory.getLogger(EmailNotificationListener.class);
-    private static final String COLA = "q.cmd.email";
+    /** Rotulo para los logs. El nombre real de la cola lo pone el yml. */
+    private static final String COLA = "email";
 
     /**
      * Idempotencia: evita reenviar el correo si el mismo mensaje llega dos
@@ -50,7 +52,7 @@ public class EmailNotificationListener {
         this.confirmacion = confirmacion;
     }
 
-    @RabbitListener(queues = COLA)
+    @RabbitListener(queues = "${mensajeria.flujos.email.cola}")
     public void onEmailCommand(EventEnvelope<EmailCommandPayload> envelope,
             Channel canal,
             @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {

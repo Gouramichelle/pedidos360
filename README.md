@@ -606,6 +606,62 @@ comportamiento correcto para una operacion idempotente.
 
 ---
 
+## Flujos de comandos en RabbitMQ
+
+Hay tres dominios, cada uno con su cola, su DLQ y su consumidor. Los
+consumidores viven en `ms-pedidos360-notify`, agrupados por dominio en
+paquetes separados (`messaging/email`, `messaging/kitchen`,
+`messaging/invoice`), con lo comun en `messaging/comun`.
+
+| Dominio | Cola | Exchange | Routing key | Se dispara cuando |
+|---|---|---|---|---|
+| Notificacion | `q.cmd.email` | `cmd.topic` | `email.send` | En cada cambio de estado |
+| Cocina | `q.cmd.kitchen` | `cmd.direct` | `kitchen.ticket` | El pedido pasa a ACEPTADO |
+| Facturacion | `q.cmd.invoice` | `cmd.topic` | `invoice.gen` | El pedido pasa a ENTREGADO |
+
+**Por que cocina va por `direct` y los otros dos por `topic`.** Un ticket de
+cocina tiene un unico destinatario y una clave exacta: no hay variantes. El
+correo y el documento de cobro si las admiten, y el dia que existan
+(`email.send.urgente`, `invoice.gen.boleta`) los patrones `email.*` e
+`invoice.*` las reciben sin tocar un solo binding. Los dos tipos de exchange
+estan ahi porque resuelven casos distintos, no por completitud.
+
+**Por que los comandos no se disparan todos juntos.** El evento de Kafka se
+publica en toda transicion, porque auditoria y reportes necesitan la historia
+completa. Los comandos no: la cocina no necesita un ticket de un pedido que
+todavia no se acepto, y no se puede cobrar un pedido que aun podria cancelarse.
+Los tres comparten el `correlationId` del cambio de estado que los origino.
+
+### La topologia se arma desde el yml
+
+Ningun nombre de cola, exchange o routing key esta escrito en el codigo Java.
+Todo sale del bloque `mensajeria` del `application.yml`:
+
+```yaml
+mensajeria:
+  exchanges:
+    direct: cmd.direct
+    topic: cmd.topic
+    dlx: cmd.dead.dlx
+  flujos:
+    kitchen:
+      cola: q.cmd.kitchen
+      routing-key: kitchen.ticket
+      patron-topic: kitchen.#
+```
+
+`RabbitTopologyConfig` recorre ese bloque y declara, por cada flujo, la cola
+con su dead-lettering, la DLQ y los tres bindings. Los publishers consultan ahi
+donde escribir, y los listeners toman el nombre de su cola con
+`@RabbitListener(queues = "${mensajeria.flujos.kitchen.cola}")`. **Agregar un
+flujo nuevo es agregar una entrada en el yml**, sin escribir una clase.
+
+El bloque tiene que ser identico en `ms-orders` y `ms-notify`: los dos declaran
+la misma topologia de forma idempotente por si uno arranca antes que el otro, y
+declarar una cola dos veces con argumentos distintos falla.
+
+---
+
 ## Confirmacion de mensajes en los consumidores
 
 Los consumidores de RabbitMQ corren en modo **MANUAL**: ningun mensaje se da

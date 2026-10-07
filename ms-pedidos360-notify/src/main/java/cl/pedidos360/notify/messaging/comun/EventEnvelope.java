@@ -1,4 +1,4 @@
-package cl.pedidos360.notify.messaging;
+package cl.pedidos360.notify.messaging.comun;
 
 import java.time.Instant;
 

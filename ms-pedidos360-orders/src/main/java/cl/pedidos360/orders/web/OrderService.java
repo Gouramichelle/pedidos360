@@ -12,6 +12,8 @@ import cl.pedidos360.orders.domain.OrderItem;
 import cl.pedidos360.orders.domain.OrderRepository;
 import cl.pedidos360.orders.domain.OrderStatus;
 import cl.pedidos360.orders.messaging.EmailCommandPublisher;
+import cl.pedidos360.orders.messaging.InvoiceCommandPublisher;
+import cl.pedidos360.orders.messaging.KitchenCommandPublisher;
 import cl.pedidos360.orders.messaging.OrderEventPublisher;
 
 @Service
@@ -21,16 +23,22 @@ public class OrderService {
     private final CatalogClient catalogClient;
     private final OrderEventPublisher eventPublisher;
     private final EmailCommandPublisher emailPublisher;
+    private final KitchenCommandPublisher kitchenPublisher;
+    private final InvoiceCommandPublisher invoicePublisher;
 
     public OrderService(
             OrderRepository repository,
             CatalogClient catalogClient,
             OrderEventPublisher eventPublisher,
-            EmailCommandPublisher emailPublisher) {
+            EmailCommandPublisher emailPublisher,
+            KitchenCommandPublisher kitchenPublisher,
+            InvoiceCommandPublisher invoicePublisher) {
         this.repository = repository;
         this.catalogClient = catalogClient;
         this.eventPublisher = eventPublisher;
         this.emailPublisher = emailPublisher;
+        this.kitchenPublisher = kitchenPublisher;
+        this.invoicePublisher = invoicePublisher;
     }
 
     public List<Order> listar() {
@@ -86,10 +94,29 @@ public class OrderService {
         return guardado;
     }
 
+    /**
+     * Un cambio de estado produce un evento y uno o mas comandos, todos con el
+     * mismo correlationId para poder seguir la operacion de punta a punta.
+     *
+     * El evento se publica siempre: es la fuente de verdad de auditoria y
+     * reportes, y a esos servicios les interesa toda transicion. Los comandos,
+     * en cambio, se disparan solo cuando el trabajo tiene sentido: la cocina no
+     * necesita un ticket de un pedido que todavia no se acepto, y no se puede
+     * cobrar un pedido que aun podria cancelarse.
+     */
     private void publicarEventos(Order order, OrderStatus estadoAnterior, String actor) {
         String trace = UUID.randomUUID().toString();
         String correlationId = UUID.randomUUID().toString();
+
         eventPublisher.publicarCambioEstado(order, estadoAnterior, actor, trace, correlationId);
+
         emailPublisher.notificarCambioEstado(order, trace, correlationId);
+
+        if (order.getStatus() == OrderStatus.ACEPTADO) {
+            kitchenPublisher.emitirTicket(order, trace, correlationId);
+        }
+        if (order.getStatus() == OrderStatus.ENTREGADO) {
+            invoicePublisher.generarDocumento(order, trace, correlationId);
+        }
     }
 }

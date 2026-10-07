@@ -1,4 +1,4 @@
-package cl.pedidos360.notify.messaging;
+package cl.pedidos360.notify.messaging.email;
 
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import com.rabbitmq.client.Channel;
 
 import cl.pedidos360.notify.messaging.comun.ConfirmacionDeMensajes;
+import cl.pedidos360.notify.messaging.comun.EventEnvelope;
 
 /**
  * El listener se prueba con la politica de confirmacion real y el canal

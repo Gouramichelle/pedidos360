@@ -19,6 +19,38 @@ spring:
     # un NACK con requeue de verdad. Ver RabbitListenerConfig y
     # ConfirmacionDeMensajes.
 
+# Topologia de RabbitMQ, centralizada.
+#
+# Ningun nombre de cola, exchange, routing key o binding se escribe en el
+# codigo Java: RabbitTopologyConfig arma la topologia recorriendo este bloque,
+# y los publishers leen de aqui la cola a la que escriben. Agregar un flujo
+# nuevo es agregar una entrada bajo "flujos", sin tocar una sola clase.
+#
+# Este bloque tiene que ser identico en ms-orders y en ms-notify: los dos
+# declaran la misma topologia de forma idempotente, y declarar una cola dos
+# veces con argumentos distintos falla.
+mensajeria:
+  exchanges:
+    direct: cmd.direct
+    topic: cmd.topic
+    dlx: cmd.dead.dlx
+  flujos:
+    # routing-key enruta el comando; patron-topic es el binding del exchange
+    # topic, que admite comodines. La DLQ de cada cola cuelga del dlx con la
+    # misma routing-key.
+    email:
+      cola: q.cmd.email
+      routing-key: email.send
+      patron-topic: email.*
+    kitchen:
+      cola: q.cmd.kitchen
+      routing-key: kitchen.ticket
+      patron-topic: kitchen.#
+    invoice:
+      cola: q.cmd.invoice
+      routing-key: invoice.gen
+      patron-topic: invoice.*
+
 # ms-notify no expone API publica ni valida JWT (es un consumer interno),
 # pero mantiene issuer-uri/audiences por si en el futuro se le agrega un
 # endpoint de health/administracion protegido.

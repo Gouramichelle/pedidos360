@@ -27,6 +27,8 @@ import cl.pedidos360.orders.domain.OrderItem;
 import cl.pedidos360.orders.domain.OrderRepository;
 import cl.pedidos360.orders.domain.OrderStatus;
 import cl.pedidos360.orders.messaging.EmailCommandPublisher;
+import cl.pedidos360.orders.messaging.InvoiceCommandPublisher;
+import cl.pedidos360.orders.messaging.KitchenCommandPublisher;
 import cl.pedidos360.orders.messaging.OrderEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,12 +42,17 @@ class OrderServiceTest {
     OrderEventPublisher eventPublisher;
     @Mock
     EmailCommandPublisher emailPublisher;
+    @Mock
+    KitchenCommandPublisher kitchenPublisher;
+    @Mock
+    InvoiceCommandPublisher invoicePublisher;
 
     OrderService service;
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(repository, catalogClient, eventPublisher, emailPublisher);
+        service = new OrderService(repository, catalogClient, eventPublisher, emailPublisher,
+                kitchenPublisher, invoicePublisher);
         // lenient: no todos los tests llegan a guardar (algunos fallan antes por una
         // transicion de estado invalida), y eso no deberia hacerlos fallar por un
         // stub sin usar.
@@ -159,5 +166,56 @@ class OrderServiceTest {
 
     private static <T> T eq(T value) {
         return org.mockito.ArgumentMatchers.eq(value);
+    }
+
+    @Test
+    @DisplayName("aceptar el pedido emite el ticket de cocina, y solo ahi")
+    void aceptarEmiteElTicketDeCocina() {
+        Order order = new Order("cliente-1");
+        order.addItem(new OrderItem(10L, "SKU-A", 2, new BigDecimal("100.00")));
+        when(repository.findWithItemsById(1L)).thenReturn(Optional.of(order));
+
+        service.cambiarEstado(1L, OrderStatus.ACEPTADO, "Bearer x", "operador@pedidos360.cl");
+
+        verify(kitchenPublisher, times(1)).emitirTicket(any(Order.class), anyString(), anyString());
+        // Todavia no se entrego: no hay nada que cobrar.
+        verify(invoicePublisher, org.mockito.Mockito.never())
+                .generarDocumento(any(Order.class), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("entregar el pedido genera el documento de cobro, y no otro ticket de cocina")
+    void entregarGeneraElDocumentoDeCobro() {
+        Order order = new Order("cliente-1");
+        order.addItem(new OrderItem(10L, "SKU-A", 2, new BigDecimal("100.00")));
+        when(repository.findWithItemsById(1L)).thenReturn(Optional.of(order));
+
+        // El pedido tiene que recorrer la maquina de estados completa.
+        service.cambiarEstado(1L, OrderStatus.ACEPTADO, "Bearer x", "op@pedidos360.cl");
+        service.cambiarEstado(1L, OrderStatus.EN_PREPARACION, "Bearer x", "op@pedidos360.cl");
+        service.cambiarEstado(1L, OrderStatus.DESPACHADO, "Bearer x", "op@pedidos360.cl");
+        service.cambiarEstado(1L, OrderStatus.ENTREGADO, "Bearer x", "op@pedidos360.cl");
+
+        verify(invoicePublisher, times(1)).generarDocumento(any(Order.class), anyString(), anyString());
+        // El ticket se emitio una sola vez, al aceptar.
+        verify(kitchenPublisher, times(1)).emitirTicket(any(Order.class), anyString(), anyString());
+        // El correo, en cambio, sale en cada transicion: son cuatro.
+        verify(emailPublisher, times(4)).notificarCambioEstado(any(Order.class), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("un pedido recien creado no dispara ni cocina ni facturacion")
+    void crearNoDisparaCocinaNiFacturacion() {
+        when(catalogClient.obtenerProducto(eq(1L), anyString()))
+                .thenReturn(new CatalogClient.Product(1L, "SKU-A", new BigDecimal("10.00"), 50));
+
+        service.crear(
+                new OrderDtos.CreateOrderRequest(null, List.of(new OrderDtos.OrderItemRequest(1L, 2))),
+                "cliente-1", "Bearer x", "cliente@pedidos360.cl");
+
+        verify(kitchenPublisher, org.mockito.Mockito.never())
+                .emitirTicket(any(Order.class), anyString(), anyString());
+        verify(invoicePublisher, org.mockito.Mockito.never())
+                .generarDocumento(any(Order.class), anyString(), anyString());
     }
 }

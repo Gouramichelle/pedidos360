@@ -1,152 +1,65 @@
 package cl.pedidos360.orders.config;
 
-import org.springframework.amqp.core.Binding;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Declarable;
+import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Topologia RabbitMQ del Caso 0: 3 flujos de comando (email, kitchen, invoice),
- * cada uno con su cola principal y su DLQ, mas los exchanges direct/topic y el
- * exchange de dead-lettering.
+ * Topologia de comandos de RabbitMQ, armada a partir del bloque "mensajeria"
+ * del application.yml. No hay ni un nombre escrito en esta clase.
  *
- * Para EP1 solo q.cmd.email tiene consumidor activo (ms-notify); kitchen e
- * invoice se declaran para dejar la topologia completa desde ahora, tal como
- * indica el roadmap, aunque todavia no publiquen ni consuman.
+ * Por cada flujo configurado se declara la cola principal, su DLQ y tres
+ * bindings:
+ *   - en el exchange direct, con la routing key exacta
+ *   - en el exchange topic, con el patron que admite comodines
+ *   - la DLQ en el dead-letter exchange, con la misma routing key
  *
- * Esta clase se declara solo en ms-pedidos360-orders porque es quien primero
- * necesita que la topologia exista al arrancar (es el unico productor). Los
- * consumidores (ms-notify) declaran las mismas colas de forma idempotente por
- * si arrancan antes.
+ * Se usa un unico bean Declarables en vez de un bean por objeto porque asi la
+ * cantidad de flujos la decide el yml: agregar uno nuevo no agrega metodos.
+ * RabbitAdmin declara todo lo que encuentre dentro de un Declarables igual que
+ * si fueran beans sueltos.
+ *
+ * ms-orders y ms-notify declaran esta misma topologia de forma idempotente,
+ * por si uno arranca antes que el otro. Declarar dos veces la misma cola con
+ * los mismos argumentos no falla; hacerlo con argumentos distintos si, por eso
+ * el bloque del yml tiene que ser identico en los dos servicios.
  */
 @Configuration
+@EnableConfigurationProperties(MensajeriaProperties.class)
 public class RabbitTopologyConfig {
 
-    public static final String EXCHANGE_DIRECT = "cmd.direct";
-    public static final String EXCHANGE_TOPIC = "cmd.topic";
-    public static final String EXCHANGE_DLX = "cmd.dead.dlx";
-
-    private static final String Q_EMAIL = "q.cmd.email";
-    private static final String Q_KITCHEN = "q.cmd.kitchen";
-    private static final String Q_INVOICE = "q.cmd.invoice";
-
     @Bean
-    DirectExchange cmdDirectExchange() {
-        return new DirectExchange(EXCHANGE_DIRECT, true, false);
-    }
+    Declarables topologiaDeComandos(MensajeriaProperties props) {
+        DirectExchange direct = new DirectExchange(props.exchanges().direct(), true, false);
+        TopicExchange topic = new TopicExchange(props.exchanges().topic(), true, false);
+        DirectExchange dlx = new DirectExchange(props.exchanges().dlx(), true, false);
 
-    @Bean
-    TopicExchange cmdTopicExchange() {
-        return new TopicExchange(EXCHANGE_TOPIC, true, false);
-    }
+        List<Declarable> declarables = new ArrayList<>(List.of(direct, topic, dlx));
 
-    @Bean
-    DirectExchange cmdDeadLetterExchange() {
-        return new DirectExchange(EXCHANGE_DLX, true, false);
-    }
+        props.flujos().forEach((dominio, flujo) -> {
+            Queue cola = QueueBuilder.durable(flujo.cola())
+                    .withArgument("x-dead-letter-exchange", props.exchanges().dlx())
+                    .withArgument("x-dead-letter-routing-key", flujo.routingKey())
+                    .build();
+            Queue dlq = QueueBuilder.durable(flujo.dlq()).build();
 
-    // ---- Colas principales, cada una enruta sus mensajes fallidos a su DLQ ----
+            declarables.add(cola);
+            declarables.add(dlq);
+            declarables.add(BindingBuilder.bind(cola).to(direct).with(flujo.routingKey()));
+            declarables.add(BindingBuilder.bind(cola).to(topic).with(flujo.patronTopic()));
+            declarables.add(BindingBuilder.bind(dlq).to(dlx).with(flujo.routingKey()));
+        });
 
-    @Bean
-    Queue qCmdEmail() {
-        return colaConDlq(Q_EMAIL);
-    }
-
-    @Bean
-    Queue qCmdKitchen() {
-        return colaConDlq(Q_KITCHEN);
-    }
-
-    @Bean
-    Queue qCmdInvoice() {
-        return colaConDlq(Q_INVOICE);
-    }
-
-    private Queue colaConDlq(String nombre) {
-        return QueueBuilder.durable(nombre)
-                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
-                .withArgument("x-dead-letter-routing-key", nombre.substring("q.cmd.".length()).equals("email") ? "email.send"
-                        : nombre.substring("q.cmd.".length()).equals("kitchen") ? "kitchen.ticket" : "invoice.gen")
-                .build();
-    }
-
-    // ---- DLQs: colas simples colgadas del exchange de dead-lettering ----
-
-    @Bean
-    Queue qCmdEmailDlq() {
-        return QueueBuilder.durable(Q_EMAIL + ".dlq").build();
-    }
-
-    @Bean
-    Queue qCmdKitchenDlq() {
-        return QueueBuilder.durable(Q_KITCHEN + ".dlq").build();
-    }
-
-    @Bean
-    Queue qCmdInvoiceDlq() {
-        return QueueBuilder.durable(Q_INVOICE + ".dlq").build();
-    }
-
-    // ---- Bindings direct: enrutamiento exacto ----
-
-    @Bean
-    Binding bindEmailDirect() {
-        return BindingBuilder.bind(qCmdEmail()).to(cmdDirectExchange()).with("email.send");
-    }
-
-    @Bean
-    Binding bindKitchenDirect() {
-        return BindingBuilder.bind(qCmdKitchen()).to(cmdDirectExchange()).with("kitchen.ticket");
-    }
-
-    @Bean
-    Binding bindInvoiceDirect() {
-        return BindingBuilder.bind(qCmdInvoice()).to(cmdDirectExchange()).with("invoice.gen");
-    }
-
-    // ---- Bindings topic: variantes (ej. email.send.high) sin tocar el binding ----
-
-    @Bean
-    Binding bindEmailTopic() {
-        return BindingBuilder.bind(qCmdEmail()).to(cmdTopicExchange()).with("email.*");
-    }
-
-    @Bean
-    Binding bindKitchenTopic() {
-        return BindingBuilder.bind(qCmdKitchen()).to(cmdTopicExchange()).with("kitchen.#");
-    }
-
-    @Bean
-    Binding bindInvoiceTopic() {
-        return BindingBuilder.bind(qCmdInvoice()).to(cmdTopicExchange()).with("invoice.*");
-    }
-
-    // ---- Bindings de dead-lettering ----
-
-    @Bean
-    Binding bindEmailDlq() {
-        return BindingBuilder.bind(qCmdEmailDlq()).to(cmdDeadLetterExchange()).with("email.send");
-    }
-
-    @Bean
-    Binding bindKitchenDlq() {
-        return BindingBuilder.bind(qCmdKitchenDlq()).to(cmdDeadLetterExchange()).with("kitchen.ticket");
-    }
-
-    @Bean
-    Binding bindInvoiceDlq() {
-        return BindingBuilder.bind(qCmdInvoiceDlq()).to(cmdDeadLetterExchange()).with("invoice.gen");
-    }
-
-    /** JSON en vez de Java serializado: interoperable entre servicios y legible en la management UI. */
-    @Bean
-    MessageConverter jsonMessageConverter() {
-        return new Jackson2JsonMessageConverter();
+        return new Declarables(declarables);
     }
 }

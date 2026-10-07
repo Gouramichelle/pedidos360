@@ -1,4 +1,4 @@
-package cl.pedidos360.notify.messaging;
+package cl.pedidos360.notify.messaging.email;
 
 public record EmailCommandPayload(
         Long orderId,

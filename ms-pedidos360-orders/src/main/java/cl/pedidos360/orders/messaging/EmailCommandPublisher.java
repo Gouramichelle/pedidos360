@@ -5,34 +5,38 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import cl.pedidos360.orders.config.MensajeriaProperties;
 import cl.pedidos360.orders.domain.Order;
-import cl.pedidos360.orders.config.RabbitTopologyConfig;
 
 /**
- * Publica el comando de notificacion por email cada vez que cambia el estado
- * de un pedido. Va al exchange topic con routing key "email.send" para poder
- * variarla despues (ej. "email.send.high") sin tocar el binding.
+ * Comando de notificacion al cliente, en cada cambio de estado del pedido.
+ *
+ * Va por el exchange TOPIC: la routing key se compone por tema, asi que
+ * manana se puede publicar "email.send.urgente" y la cola lo sigue recibiendo
+ * por el patron "email.*" sin tocar ningun binding.
  */
 @Component
 public class EmailCommandPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(EmailCommandPublisher.class);
-    private static final String ROUTING_KEY = "email.send";
+    private static final String FLUJO = "email";
 
     private final RabbitTemplate rabbitTemplate;
+    private final MensajeriaProperties mensajeria;
 
-    public EmailCommandPublisher(RabbitTemplate rabbitTemplate) {
+    public EmailCommandPublisher(RabbitTemplate rabbitTemplate, MensajeriaProperties mensajeria) {
         this.rabbitTemplate = rabbitTemplate;
+        this.mensajeria = mensajeria;
     }
 
     public void notificarCambioEstado(Order order, String traceId, String correlationId) {
+        MensajeriaProperties.Flujo flujo = mensajeria.flujo(FLUJO);
         EmailCommandPayload payload = new EmailCommandPayload(
                 order.getId(), order.getCustomerId(), order.getStatus().name());
         EventEnvelope<EmailCommandPayload> envelope = EventEnvelope.of(
                 "EmailNotificationRequested", traceId, correlationId, payload);
         try {
-            rabbitTemplate.convertAndSend(
-                    RabbitTopologyConfig.EXCHANGE_TOPIC, ROUTING_KEY, envelope);
+            rabbitTemplate.convertAndSend(mensajeria.exchanges().topic(), flujo.routingKey(), envelope);
             log.info("Encolado email para el pedido {} ({}), correlationId={}",
                     order.getId(), order.getStatus(), correlationId);
         } catch (Exception ex) {
