@@ -29,7 +29,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
    <div class="mitad"><div class="et">Lo que ocurre por dentro</div>
      <div class="tx">Consola de RabbitMQ</div></div>
  </div>
- <div class="pie"><p>Dos navegadores corriendo <b>a la vez</b> contra el mismo despliegue: crear un pedido a la izquierda genera el trafico que se registra a la derecha</p></div>
+ <div class="pie"><p>El consumidor esta <b>pausado a proposito</b>: con los tres andando el mensaje se procesa en milisegundos y el contador nunca se mueve. Pausado, se ve llegar; al reanudarlo, se ve drenar.</p></div>
 </body></html>`;
 
 const b = await chromium.launch();
