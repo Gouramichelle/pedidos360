@@ -1,6 +1,6 @@
 # Guion de la presentacion
 
-Un solo video: **`entregables/pedidos360-demostracion.mp4`**, 5 min 59 s.
+Un solo video: **`entregables/pedidos360-demostracion.mp4`**, 5 min 50 s.
 
 Cada tarjeta de transicion anuncia lo que viene detras, asi que funciona como
 hilo conductor: se puede dejar correr de principio a fin mientras se narra.
@@ -111,46 +111,49 @@ Dejar correr. Arrancar cuando aparezca la primera tarjeta.
 
 ### 1:43 — La conexion, en vivo
 
-El tramo que demuestra que no hay nada preparado: **dos navegadores corriendo
-al mismo tiempo** contra el mismo despliegue.
+Dos navegadores corriendo al mismo tiempo contra el mismo despliegue. Es el
+tramo que demuestra que nada esta preparado.
 
 **1:43 · Arranque**
 
 > "A la izquierda la aplicacion, a la derecha la consola de RabbitMQ. Dos
-> navegadores distintos, a la vez, contra el mismo despliegue. Las seis colas
-> estan en cero."
+> navegadores distintos, a la vez. Las seis colas estan en cero."
 
-**2:18 · La pausa, y por que**
+**2:07 · La pausa, y por que**
 
-> "Antes de confirmar el pedido voy a **pausar el consumidor**, y quiero
-> explicar por que, porque es importante.
+> "Antes de confirmar voy a **pausar el consumidor**, y quiero explicar por
+> que, porque importa.
 >
 > Con los tres consumidores andando, un mensaje se publica y se procesa en
-> milisegundos. La consola muestrea cada cinco segundos, asi que cuando
-> refresca ya no queda nada: el contador se queda en cero y parece que no paso
-> nada. Pausando el consumidor el mensaje se queda a la vista.
+> milisegundos. La consola muestrea cada cinco segundos: cuando refresca ya no
+> queda nada, el contador se queda en cero y parece que no paso nada. Pausando
+> el consumidor el mensaje se queda a la vista.
 >
 > Es el mismo trafico. Solo lo estoy haciendo visible."
 
-**2:40 · El momento**
+**2:13 · El momento**
 
-> "Confirmo el pedido. Y miren la derecha: **las tres colas de comando pasan a
-> tener un mensaje**. Email, cocina y facturacion. Una sola accion del usuario,
-> tres comandos.
+> "Confirmo el pedido. Miren la derecha: **las tres colas de comando pasan a
+> tener un mensaje**. Email, cocina y facturacion. Una sola accion, tres
+> comandos.
 >
-> Fijense en que columna estan: **Unacked**, no Ready. Eso significa que el
-> consumidor ya los recibio pero todavia no los confirmo. Es el modo de
-> confirmacion MANUAL: el mensaje no se da por procesado hasta que el codigo lo
-> confirma explicitamente."
+> Y fijense en que columna: **Unacked**, no Ready. Significa que el consumidor
+> ya los recibio pero todavia no los confirmo. Eso es el modo de confirmacion
+> MANUAL: el mensaje no se da por procesado hasta que el codigo lo confirma."
 
-**2:52 · Se reanuda**
+**2:25 · La prueba de que es el mismo instante**
 
-> "Reanudo el consumidor. Y las tres colas vuelven a cero: los proceso y los
-> confirmo.
->
-> Eso es el ciclo completo, visto desde los dos lados a la vez."
+> "Si quieren verificar que los dos lados son el mismo momento, estan los dos
+> relojes. El pedido dice creado a la **1:30:21**. La consola dice refrescado a
+> la **1:30:30**. Nueve segundos despues, que es lo que tarda el siguiente
+> refresco en recoger los mensajes."
 
-### 3:06 — El cluster de RabbitMQ
+**2:32 · Se reanuda**
+
+> "Reanudo el consumidor y las tres colas vuelven a cero: los proceso y los
+> confirmo. Ese es el ciclo completo, visto desde los dos lados a la vez."
+
+### 2:56 — El cluster de RabbitMQ
 
 > "Dos nodos, rabbit1 y rabbit2, integrados en un mismo cluster y levantados
 > con docker-compose en la instancia del broker.
@@ -158,12 +161,12 @@ al mismo tiempo** contra el mismo despliegue.
 > Los microservicios se conectan a los dos: si el primero no responde, Spring
 > hace failover al segundo."
 
-### 3:26 — Las seis colas
+### 3:16 — Las seis colas
 
 > "Seis colas. Tres de comando —email, cocina y facturacion— y la cola muerta
 > de cada una, que es su respaldo cuando un mensaje no se puede entregar."
 
-### 3:44 — Los dos tipos de exchange
+### 3:34 — Los dos tipos de exchange
 
 > "Dos tipos, y cada uno resuelve un caso distinto.
 >
@@ -176,7 +179,7 @@ al mismo tiempo** contra el mismo despliegue.
 >
 > El tercero, `cmd.dead.dlx`, es el de dead-lettering."
 
-### 4:00 — Retencion y limpieza
+### 3:51 — Retencion y limpieza
 
 > "Estos son los argumentos con que se declara cada cola.
 >
@@ -191,37 +194,37 @@ al mismo tiempo** contra el mismo despliegue.
 >
 > Nada de esto esta escrito en el codigo: sale del application.yml."
 
-### 4:19 — Que pasa si se cae un consumidor
+### 4:10 — Que pasa si se cae un consumidor
 
 Es el tramo mas largo, 94 segundos. Conviene narrarlo por partes.
 
-**4:19 · Punto de partida**
+**4:10 · Punto de partida**
 
 > "La cola de cocina con su consumidor enganchado, trabajando normal."
 
-**4:33 · Se cae el consumidor**
+**4:24 · Se cae el consumidor**
 
 > "Bajo el microservicio consumidor. Los consumidores pasan a cero: la cola
 > sigue existiendo, pero no hay nadie que la atienda."
 
-**4:48 · Llega un comando valido**
+**4:39 · Llega un comando valido**
 
 > "Publico un comando perfectamente valido por el exchange direct. Ojo: **este
 > mensaje no tiene nada malo**. El problema no es el mensaje, es que el
 > servicio que tenia que atenderlo no esta."
 
-**5:03 · El mensaje espera**
+**4:54 · El mensaje espera**
 
 > "Queda encolado. Un mensaje, cero consumidores. Si no hicieramos nada, se
 > quedaria ahi para siempre."
 
-**5:23 · Vence y cae a la cola muerta**
+**5:14 · Vence y cae a la cola muerta**
 
 > "Pero vence el TTL de 30 segundos y el broker lo enruta solo a la cola
 > muerta. La cola de comando queda en cero, la DLQ pasa a uno. Nadie
 > intervino: lo hizo RabbitMQ con la politica que configuramos."
 
-**5:41 · La prueba**
+**5:32 · La prueba**
 
 > "Y aca esta la evidencia. Abro el mensaje en la cola muerta y el broker dejo
 > escrito el motivo en el header `x-death`: **`reason: expired`**.
@@ -233,7 +236,7 @@ Es el tramo mas largo, 94 segundos. Conviene narrarlo por partes.
 > Son dos caminos distintos hacia la misma cola muerta, y el sistema distingue
 > entre 'el mensaje estaba malo' y 'el servicio no estaba disponible'."
 
-### 5:53 — Cierre
+### 5:44 — Cierre
 
 > "Eso es todo el flujo: identidad federada, el API Gateway validando el token
 > en el borde, un cluster de dos nodos, seis colas con sus colas muertas, los
