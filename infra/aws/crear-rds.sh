@@ -59,9 +59,12 @@ if [ -n "$ESTADO" ] && [ "$ESTADO" != "None" ]; then
   fi
   CLAVE=""
 else
-  # 25 caracteres alfanumericos: RDS rechaza varios simbolos en la contrasena
-  # maestra, y los que acepta complican el .env de Docker Compose.
-  CLAVE="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 25)"
+  # 32 caracteres hexadecimales. Se usa openssl y no `tr -dc ... | head -c`
+  # porque en esa tuberia head corta la entrada, tr recibe SIGPIPE y con
+  # `set -o pipefail` eso aborta el script antes de crear nada.
+  # Hexadecimal ademas evita simbolos: RDS rechaza varios, y los que acepta
+  # complican el .env de Docker Compose.
+  CLAVE="$(openssl rand -hex 16)"
 
   info "creando la base (tarda entre 5 y 10 minutos)..."
   aws rds create-db-instance --region "$REGION" \

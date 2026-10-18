@@ -11,7 +11,7 @@
  * rutas relativas, todo vuelve a viajar por el mismo origen y CORS deja de
  * intervenir.
  */
-const API_GATEWAY_URL = 'https://7x6u8dfoh0.execute-api.us-east-1.amazonaws.com';
+const API_GATEWAY_URL = 'https://0b7fhgzl22.execute-api.us-east-1.amazonaws.com';
 
 export const environment = {
   production: true,
