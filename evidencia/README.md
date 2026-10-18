@@ -8,7 +8,7 @@ El guion de lo que se dice en cada momento esta en **[GUION.md](GUION.md)**.
 
 ## El entregable
 
-**`entregables/pedidos360-demostracion.mp4`** — 4 min 36 s.
+**`entregables/pedidos360-demostracion.mp4`** — 5 min 46 s.
 
 Un solo video con todo el recorrido, con tarjetas de transicion que anuncian
 cada tramo. Se puede dejar correr de principio a fin mientras se narra; el
@@ -35,9 +35,15 @@ ffmpeg: este ffmpeg viene sin freetype y no tiene el filtro `drawtext`.
 | `5-caida-de-consumidor` | 94 s | El escenario de fallo completo, con `x-death: expired` |
 | `6-login-catalogo-y-pedido` | 49 s | OAuth 2.0/OIDC, catalogo real y creacion de un pedido |
 | `7-auditoria-y-reportes` | 36 s | Los consumidores reaccionando al evento |
+| `8-app-y-broker-en-paralelo` | 66 s | La app y la consola del broker **al mismo tiempo** |
 
-Total: 237 segundos de grabacion, mas 43 de tarjetas y portada.
-Con la narracion la presentacion queda entre 8 y 10 minutos.
+Total: 303 segundos de grabacion, mas 43 de tarjetas y portada.
+Con la narracion la presentacion queda entre 9 y 11 minutos.
+
+El tramo en paralelo se graba con dos contextos de navegador a la vez, cada uno
+con su propio video, y despues se componen lado a lado con ffmpeg. Es el que
+demuestra que la conexion es real: una accion en la aplicacion y su efecto en
+el broker, en el mismo instante.
 
 ## Como volver a grabarlos
 
@@ -84,3 +90,9 @@ El guion incluye el recorrido y la narracion de los dos.
 La URL de la app esta fija en dos lugares: el script `sesion` de
 `package.json` y la constante `APP` de `specs/02-app/flujo.spec.ts`. Al
 reiniciar el lab hay que actualizar ambas, ademas del redirect URI en Azure.
+
+## Hacerlo a mano
+
+Si el docente pide reproducirlo en vivo, el recorrido completo esta en
+**[PASO-A-PASO.md](PASO-A-PASO.md)**: como abrir el tunel a la consola del
+broker, donde mirar cada cosa, y como demostrar la caida de un consumidor.

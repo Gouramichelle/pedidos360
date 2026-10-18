@@ -23,23 +23,27 @@ const TARJETAS = [
     bajada: 'Auditoria y reportes se alimentan solos de los eventos de Kafka',
     pie: 'Nadie los llama: reaccionan al evento que publico ms-orders' },
 
-  { archivo: 't3', kicker: 'Parte 3 de 7', titulo: 'El cluster de RabbitMQ',
+  { archivo: 't3', kicker: 'Parte 3 de 8', titulo: 'La conexion, en vivo',
+    bajada: 'La aplicacion y la consola del broker corriendo al mismo tiempo',
+    pie: 'Una accion del usuario a la izquierda, su trafico a la derecha' },
+
+  { archivo: 't4', kicker: 'Parte 4 de 8', titulo: 'El cluster de RabbitMQ',
     bajada: 'Dos nodos integrados en un cluster, levantados con docker-compose',
     pie: 'Los microservicios se conectan a los dos y hacen failover' },
 
-  { archivo: 't4', kicker: 'Parte 4 de 7', titulo: 'Seis colas',
+  { archivo: 't5', kicker: 'Parte 5 de 8', titulo: 'Seis colas',
     bajada: 'Tres de comando — email, cocina y facturacion — y la cola muerta de cada una',
     pie: 'Cada cola de comando tiene su respaldo' },
 
-  { archivo: 't5', kicker: 'Parte 5 de 7', titulo: 'Los dos tipos de exchange',
+  { archivo: 't6', kicker: 'Parte 6 de 8', titulo: 'Los dos tipos de exchange',
     bajada: 'direct enruta por clave exacta; topic enruta por patron con comodines',
     pie: 'Estan los dos porque resuelven casos distintos, no por completitud' },
 
-  { archivo: 't6', kicker: 'Parte 6 de 7', titulo: 'Retencion y limpieza',
+  { archivo: 't7', kicker: 'Parte 7 de 8', titulo: 'Retencion y limpieza',
     bajada: 'TTL de los comandos, dead-lettering y tope de las colas muertas',
     pie: 'Configurado en application.yml, no escrito en el codigo' },
 
-  { archivo: 't7', kicker: 'Parte 7 de 7', titulo: 'Y si se cae un consumidor',
+  { archivo: 't8', kicker: 'Parte 8 de 8', titulo: 'Y si se cae un consumidor',
     bajada: 'El broker vence el mensaje y lo enruta solo a la cola muerta',
     pie: 'El header x-death deja escrito el motivo: expired' },
 

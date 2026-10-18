@@ -1,10 +1,10 @@
 # Guion de la presentacion
 
-Un solo video: **`entregables/pedidos360-demostracion.mp4`**, 4 min 36 s.
+Un solo video: **`entregables/pedidos360-demostracion.mp4`**, 5 min 46 s.
 
 Cada tarjeta de transicion anuncia lo que viene detras, asi que funciona como
 hilo conductor: se puede dejar correr de principio a fin mientras se narra.
-Con las pausas y lo que se muestra en vivo, la presentacion queda entre 8 y 10
+Con las pausas y lo que se muestra en vivo, la presentacion queda entre 9 y 11
 minutos.
 
 ---
@@ -109,7 +109,41 @@ Dejar correr. Arrancar cuando aparezca la primera tarjeta.
 > Si manana quisiera un cuarto servicio que reaccione a los pedidos, lo conecto
 > al mismo topico y ms-orders no cambia una linea."
 
-### 1:43 — El cluster de RabbitMQ
+### 1:43 — La conexion, en vivo
+
+El tramo que demuestra que no hay nada preparado: **dos navegadores corriendo
+al mismo tiempo** contra el mismo despliegue. A la izquierda la aplicacion, a
+la derecha la consola del broker.
+
+**1:43 · Arranque**
+
+> "A la izquierda la aplicacion, a la derecha la consola de RabbitMQ. Son dos
+> navegadores distintos corriendo a la vez contra el mismo despliegue. Fijense
+> que el grafico de Message rates de la derecha esta en cero: todavia no paso
+> nada."
+
+**2:05 · Se arma el pedido**
+
+> "Armo un pedido con dos productos. Tres unidades de pizza margarita y dos de
+> pepperoni. El total que ven lo calculo ms-orders leyendo los precios del
+> catalogo."
+
+**2:25 · El momento**
+
+> "Confirmo. Y aca esta lo que quiero que vean: **esa sola accion de la
+> izquierda genera el trafico que aparece a la derecha**. El pedido queda
+> creado, y la consola del broker registra los mensajes que esa creacion
+> publico.
+>
+> No es una captura preparada ni dos videos pegados: es el mismo instante,
+> visto desde los dos lados."
+
+**2:40 · El detalle de las colas**
+
+> "Y bajando a las colas se ve el trafico de las tres: email, cocina y
+> facturacion. Las tres recibieron su mensaje de ese mismo pedido."
+
+### 2:53 — El cluster de RabbitMQ
 
 > "Dos nodos, rabbit1 y rabbit2, integrados en un mismo cluster y levantados
 > con docker-compose en la instancia del broker.
@@ -117,12 +151,12 @@ Dejar correr. Arrancar cuando aparezca la primera tarjeta.
 > Los microservicios se conectan a los dos: si el primero no responde, Spring
 > hace failover al segundo."
 
-### 2:02 — Las seis colas
+### 3:13 — Las seis colas
 
 > "Seis colas. Tres de comando —email, cocina y facturacion— y la cola muerta
 > de cada una, que es su respaldo cuando un mensaje no se puede entregar."
 
-### 2:20 — Los dos tipos de exchange
+### 3:31 — Los dos tipos de exchange
 
 > "Dos tipos, y cada uno resuelve un caso distinto.
 >
@@ -135,7 +169,7 @@ Dejar correr. Arrancar cuando aparezca la primera tarjeta.
 >
 > El tercero, `cmd.dead.dlx`, es el de dead-lettering."
 
-### 2:37 — Retencion y limpieza
+### 3:47 — Retencion y limpieza
 
 > "Estos son los argumentos con que se declara cada cola.
 >
@@ -150,37 +184,37 @@ Dejar correr. Arrancar cuando aparezca la primera tarjeta.
 >
 > Nada de esto esta escrito en el codigo: sale del application.yml."
 
-### 2:56 — Que pasa si se cae un consumidor
+### 4:06 — Que pasa si se cae un consumidor
 
 Es el tramo mas largo, 94 segundos. Conviene narrarlo por partes.
 
-**2:56 · Punto de partida**
+**4:06 · Punto de partida**
 
 > "La cola de cocina con su consumidor enganchado, trabajando normal."
 
-**3:10 · Se cae el consumidor**
+**4:20 · Se cae el consumidor**
 
 > "Bajo el microservicio consumidor. Los consumidores pasan a cero: la cola
 > sigue existiendo, pero no hay nadie que la atienda."
 
-**3:25 · Llega un comando valido**
+**4:35 · Llega un comando valido**
 
 > "Publico un comando perfectamente valido por el exchange direct. Ojo: **este
 > mensaje no tiene nada malo**. El problema no es el mensaje, es que el
 > servicio que tenia que atenderlo no esta."
 
-**3:40 · El mensaje espera**
+**4:50 · El mensaje espera**
 
 > "Queda encolado. Un mensaje, cero consumidores. Si no hicieramos nada, se
 > quedaria ahi para siempre."
 
-**4:00 · Vence y cae a la cola muerta**
+**5:10 · Vence y cae a la cola muerta**
 
 > "Pero vence el TTL de 30 segundos y el broker lo enruta solo a la cola
 > muerta. La cola de comando queda en cero, la DLQ pasa a uno. Nadie
 > intervino: lo hizo RabbitMQ con la politica que configuramos."
 
-**4:18 · La prueba**
+**5:28 · La prueba**
 
 > "Y aca esta la evidencia. Abro el mensaje en la cola muerta y el broker dejo
 > escrito el motivo en el header `x-death`: **`reason: expired`**.
@@ -192,7 +226,7 @@ Es el tramo mas largo, 94 segundos. Conviene narrarlo por partes.
 > Son dos caminos distintos hacia la misma cola muerta, y el sistema distingue
 > entre 'el mensaje estaba malo' y 'el servicio no estaba disponible'."
 
-### 4:30 — Cierre
+### 5:40 — Cierre
 
 > "Eso es todo el flujo: identidad federada, el API Gateway validando el token
 > en el borde, un cluster de dos nodos, seis colas con sus colas muertas, los
@@ -262,6 +296,13 @@ Es el tramo mas largo, 94 segundos. Conviene narrarlo por partes.
 > administraria AWS.
 
 ---
+
+## Si el docente pide verlo en vivo
+
+Todo lo del video se puede reproducir a mano. El recorrido completo —como
+entrar a la consola del broker por tunel SSH, donde mirar cada cosa, y como
+demostrar la caida de un consumidor paso a paso— esta en
+**[PASO-A-PASO.md](PASO-A-PASO.md)**.
 
 ## Si hay que rehacer el video
 

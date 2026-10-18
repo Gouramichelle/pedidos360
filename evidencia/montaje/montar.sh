@@ -37,22 +37,31 @@ clip() {  # $1=archivo sin extension
     "$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$CLIPS/$1.mp4" | cut -d. -f1)"
 }
 
+# El tramo en paralelo ya viene compuesto en MP4 por montar-paralelo.sh.
+clip_mp4() {
+  ffmpeg -y -loglevel error -i "entregables/$1.mp4" "${comun[@]}" "$CLIPS/$1.mp4"
+  printf '  video    %-34s %ss\n' "$1" \
+    "$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$CLIPS/$1.mp4" | cut -d. -f1)"
+}
+
 echo "-- Normalizando piezas --"
 tarjeta portada 5
 clip 6-login-catalogo-y-pedido
 tarjeta t1 4
 clip 7-auditoria-y-reportes
 tarjeta t2 4
-clip 1-cluster-dos-nodos
+clip_mp4 8-app-y-broker-en-paralelo
 tarjeta t3 4
-clip 2-seis-colas-y-sus-dlq
+clip 1-cluster-dos-nodos
 tarjeta t4 4
-clip 3-exchanges-direct-y-topic
+clip 2-seis-colas-y-sus-dlq
 tarjeta t5 4
-clip 4-politicas-de-retencion
+clip 3-exchanges-direct-y-topic
 tarjeta t6 4
-clip 5-caida-de-consumidor
+clip 4-politicas-de-retencion
 tarjeta t7 4
+clip 5-caida-de-consumidor
+tarjeta t8 4
 tarjeta cierre 6
 
 # El orden del montaje: cada tarjeta anuncia el clip que viene detras.
@@ -63,14 +72,16 @@ file '6-login-catalogo-y-pedido.mp4'
 file 't2.mp4'
 file '7-auditoria-y-reportes.mp4'
 file 't3.mp4'
-file '1-cluster-dos-nodos.mp4'
+file '8-app-y-broker-en-paralelo.mp4'
 file 't4.mp4'
-file '2-seis-colas-y-sus-dlq.mp4'
+file '1-cluster-dos-nodos.mp4'
 file 't5.mp4'
-file '3-exchanges-direct-y-topic.mp4'
+file '2-seis-colas-y-sus-dlq.mp4'
 file 't6.mp4'
-file '4-politicas-de-retencion.mp4'
+file '3-exchanges-direct-y-topic.mp4'
 file 't7.mp4'
+file '4-politicas-de-retencion.mp4'
+file 't8.mp4'
 file '5-caida-de-consumidor.mp4'
 file 'cierre.mp4'
 ORDEN
