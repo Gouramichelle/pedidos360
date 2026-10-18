@@ -16,8 +16,9 @@ privada mas que verificar en cada reinicio.
 | `ec2-apps` | `t3.medium` | 6 microservicios + nginx | 8080-8086 |
 | `ec2-broker` | `t3.medium` | Cluster RabbitMQ (2 nodos) + Kafka + Zookeeper | 5672/5673, 15672/15673, 9092 |
 
-RDS y el API Gateway **no** los tocan estos scripts: sobreviven a la expiracion
-de la sesion y se configuran una sola vez.
+RDS y el API Gateway sobreviven a la expiracion de la sesion, asi que
+normalmente se crean una sola vez (`crear-rds.sh` y `crear-gateway.sh`) y
+despues no se tocan. `provisionar.sh` y `desplegar.sh` no los modifican.
 
 | Security group | Reglas de entrada |
 |---|---|
@@ -38,13 +39,33 @@ Zookeeper no necesita regla: Kafka lo alcanza por la red interna de Docker.
    versiona: es la fuente de los secretos y los scripts solo le reescriben las
    IPs.
 
-## Despliegue completo
+## Desde cero, cuando no queda nada en AWS
+
+Un solo comando encadena todo en el orden correcto:
 
 ```bash
+./infra/aws/levantar-todo.sh
+```
+
+Hace, en este orden: la base en RDS, los security groups y las instancias, el
+API Gateway completo, apunta el frontend al Invoke URL nuevo, despliega todo y
+verifica. Se detiene una vez a pedirte que actualices el redirect URI en Azure,
+que es el unico paso que no se puede automatizar desde AWS.
+
+El orden importa: el frontend compila el Invoke URL del Gateway dentro del
+bundle, asi que el Gateway tiene que existir antes de construir el frontend.
+
+Tarda entre 20 y 30 minutos, casi todo esperando a que RDS quede disponible y
+a que compilen las seis imagenes.
+
+### O paso a paso
+
+```bash
+./infra/aws/crear-rds.sh            # solo si se perdio la base
 ./infra/aws/provisionar.sh          # security groups e instancias
+./infra/aws/crear-gateway.sh        # solo si se perdio el Gateway
 ./infra/aws/desplegar.sh            # codigo, broker y los 6 servicios
-./infra/aws/actualizar-gateway.sh   # reapunta las integraciones y el CORS
-./infra/aws/verificar.sh            # smoke test de todo
+./infra/aws/verificar.sh            # smoke test
 ```
 
 Y el unico paso que queda a mano, porque es de Azure y no de AWS:
@@ -103,7 +124,10 @@ contenedor arranque si la instancia no tiene permisos sobre CloudWatch.
 
 | Script | Para que |
 |---|---|
+| `levantar-todo.sh` | Encadena todo desde cero, en el orden correcto |
 | `comun.sh` | Variables y utilidades. No se ejecuta solo |
+| `crear-rds.sh` | Crea la base en RDS y escribe las credenciales en `infra/apps/.env` |
+| `crear-gateway.sh` | Crea la API, el authorizer JWT, 6 integraciones y 12 rutas |
 | `provisionar.sh` | Crea o arranca security groups e instancias. Idempotente |
 | `user-data.sh` | Instala Docker, Compose y buildx al primer arranque |
 | `desplegar.sh` | Copia el codigo, levanta el broker y los 6 servicios |
