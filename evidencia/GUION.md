@@ -1,24 +1,22 @@
 # Guion de la presentacion
 
-Siete videos en `entregables/`, 237 segundos en total. Con la narracion de
-abajo la presentacion queda entre 7 y 9 minutos, dentro del rango que pide la
-pauta.
+Un solo video: **`entregables/pedidos360-demostracion.mp4`**, 4 min 36 s.
 
-El orden va de lo general a lo particular: primero se muestra que el sistema
-esta desplegado y funcionando, despues como se comunica por dentro, y al final
-que soporta un fallo.
+Cada tarjeta de transicion anuncia lo que viene detras, asi que funciona como
+hilo conductor: se puede dejar correr de principio a fin mientras se narra.
+Con las pausas y lo que se muestra en vivo, la presentacion queda entre 8 y 10
+minutos.
 
 ---
 
-## Antes de empezar
+## Antes de reproducir
 
 ```bash
 cd /Users/gourarodriguez/Desktop/CloudNative
-./infra/aws/verificar.sh ~/Downloads/labsuser.pem    # todo en verde
+./infra/aws/verificar.sh ~/Downloads/labsuser.pem
 ```
 
-Y dejar abierto el tunel a la consola del broker, por si el docente pide ver
-algo en vivo:
+Dejar abierto el tunel al broker, por si piden ver algo en vivo:
 
 ```bash
 ssh -i ~/Downloads/labsuser.pem -L 15672:localhost:15672 -L 15673:localhost:15673 \
@@ -27,191 +25,179 @@ ssh -i ~/Downloads/labsuser.pem -L 15672:localhost:15672 -L 15673:localhost:1567
 
 ---
 
-## 1. Arquitectura (sin video, 45 segundos)
+## Parte en vivo, ANTES del video (90 segundos)
 
-Abrir el diagrama de `docs/mensajeria.md`.
+Hay dos cosas que el video no puede mostrar porque necesitan tu sesion
+autenticada. Conviene hacerlas primero, como contexto.
 
-> "Pedidos360 son seis microservicios en Spring Boot y un frontend en Angular,
-> desplegados en AWS. El frontend nunca habla directo con los microservicios:
-> todas las llamadas pasan por el API Gateway, que valida el JWT antes de
-> enrutar.
+### La consola de AWS
+
+**API Gateway → pedidos360-api → Routes**
+
+> "Esta es la instancia del API Manager. Doce rutas sobre seis integraciones,
+> una por microservicio.
 >
-> Por dentro hay dos sistemas de mensajeria con roles distintos. Kafka lleva
-> **eventos**: hechos que ya ocurrieron y que le interesan a varios servicios a
-> la vez. RabbitMQ lleva **comandos**: ordenes de trabajo con un unico dueño.
-> Esa distincion es la que explica por que estan los dos."
+> Fijense que cada servicio tiene dos rutas. La `ANY` lleva el authorizer JWT y
+> exige token. La `OPTIONS` va sin authorizer, y no es un descuido: las rutas
+> `ANY` incluyen el metodo OPTIONS, y con el authorizer adjunto el preflight de
+> CORS —que el navegador manda sin header Authorization— respondia 401 antes de
+> devolver los headers. La ruta OPTIONS explicita gana por especificidad de
+> metodo y lo resuelve."
+
+**Authorization → pedidos360-jwt**
+
+> "El authorizer valida contra nuestro tenant de Azure AD. Acepta dos
+> audiencias, `api://<client-id>` y el GUID pelado, porque los tokens version 2
+> traen el GUID."
+
+**EC2 → Instances**
+
+> "Dos instancias: una con los seis microservicios y el frontend, otra con el
+> cluster de RabbitMQ y Kafka, los dos levantados con docker-compose."
+
+### El portal de Azure
+
+**App registrations → Pedidos360 → App roles**, y despues **Users**
+
+> "Este es el tenant en el proveedor de identidad. Aca estan los cuatro roles
+> de la aplicacion —Admin, Operador, Cliente y Auditor— y los usuarios
+> registrados."
 
 ---
 
-## 2. La nube: API Manager e instancias (sin video, 60 segundos)
+## El video, tramo por tramo
 
-**Esto se muestra en vivo en la consola de AWS**, porque necesita tu sesion.
+### 0:00 — Portada
 
-Recorrido: **API Gateway → pedidos360-api → Routes**, despues **Authorization**,
-y finalmente **EC2 → Instances**.
+Dejar correr. Arrancar cuando aparezca la primera tarjeta.
 
-> "Esta es la instancia del API Manager en AWS. Tiene doce rutas sobre seis
-> integraciones, una por microservicio.
+### 0:09 — Login, catalogo y creacion de un pedido
+
+**0:09 · El login**
+
+> "El frontend inicia sesion con OAuth 2.0 y OpenID Connect. Vean el redirect:
+> sale de nuestra aplicacion, pasa por login.microsoftonline.com y vuelve con
+> un codigo que se intercambia por un access token. Es Authorization Code con
+> PKCE, el flujo correcto para una aplicacion de pagina unica.
 >
-> Fijense que cada servicio tiene dos rutas. La `ANY` lleva el authorizer JWT
-> adjunto y es la que exige token. La `OPTIONS` va sin authorizer, y no es un
-> descuido: las rutas `ANY` incluyen el metodo OPTIONS, y con el authorizer
-> adjunto el preflight de CORS —que el navegador manda sin header
-> Authorization— respondia 401 antes de poder devolver los headers. La ruta
-> OPTIONS explicita gana por especificidad de metodo y resuelve el preflight.
+> Arriba aparece el usuario con sus cuatro roles. Vienen del claim `roles` del
+> token, no de la base de datos."
+
+**0:25 · El catalogo**
+
+> "El catalogo lo sirve ms-catalog a traves del API Gateway. Productos reales,
+> con su precio y su stock."
+
+**0:35 · Crear el pedido**
+
+> "Creo un pedido con dos productos. Un detalle que importa: **el precio no lo
+> manda el navegador**. El frontend envia solo el identificador del producto y
+> la cantidad; ms-orders consulta el precio a ms-catalog y calcula el total. Si
+> alguien manipulara el precio en el navegador, no serviria de nada.
 >
-> El authorizer valida contra el tenant de Azure AD, y acepta dos audiencias:
-> `api://<client-id>` y el GUID pelado, porque los tokens v2 traen el GUID.
+> El pedido queda en CREADO. Y esa sola accion acaba de publicar un evento a
+> Kafka y tres comandos a RabbitMQ."
+
+### 1:02 — Auditoria y reportes
+
+> "Esta es la otra mitad del desacoplamiento. ms-audit y ms-report no consultan
+> a ms-orders: se alimentan solos de los eventos de Kafka.
 >
-> Y aca estan las dos instancias EC2: una con los seis microservicios y el
-> frontend, otra con el cluster de RabbitMQ y Kafka."
-
----
-
-## 3. Video `6-login-catalogo-y-pedido` (49 s)
-
-**0:00 - 0:12 — Login**
-
-> "El frontend inicia sesion con OAuth 2.0 y OpenID Connect contra Azure AD.
-> Vean el redirect: sale de nuestra aplicacion, pasa por
-> login.microsoftonline.com y vuelve con un codigo que MSAL intercambia por un
-> access token. Es Authorization Code con PKCE, que es el flujo correcto para
-> una aplicacion de pagina unica.
+> En auditoria aparece el OrderCreated del pedido que acabo de crear. En
+> reportes, los KPIs ya lo incluyen. Nadie los llamo.
 >
-> Arriba a la derecha aparece el usuario y sus roles: Admin, Operador, Cliente
-> y Auditor. Esos roles vienen del claim `roles` del token, no de la base de
-> datos."
+> Si manana quisiera un cuarto servicio que reaccione a los pedidos, lo conecto
+> al mismo topico y ms-orders no cambia una linea."
 
-**0:12 - 0:25 — Catalogo**
+### 1:43 — El cluster de RabbitMQ
 
-> "El catalogo lo sirve ms-catalog a traves del API Gateway. Son productos
-> reales con sus precios y su stock."
-
-**0:25 - 0:49 — Crear un pedido**
-
-> "Creo un pedido con dos productos. Un detalle importante: el precio no lo
-> manda el navegador. El frontend solo envia el identificador del producto y la
-> cantidad; ms-orders consulta el precio a ms-catalog y calcula el total. Si el
-> cliente manipulara el precio en el navegador, no serviria de nada.
->
-> El pedido queda en estado CREADO. Y esa sola accion acaba de publicar tres
-> comandos a RabbitMQ y un evento a Kafka."
-
----
-
-## 4. Video `7-auditoria-y-reportes` (36 s)
-
-> "Aca esta la otra mitad. ms-audit y ms-report no consultan a ms-orders: se
-> alimentan solos de los eventos que ms-orders publica en Kafka.
->
-> En auditoria aparece el evento OrderCreated del pedido que acabo de crear. En
-> reportes, los KPIs ya lo incluyen. Nadie los llamo: reaccionaron al evento.
->
-> Esto es lo que da el desacoplamiento. Si manana quisiera un cuarto servicio
-> que haga algo con los pedidos, lo conecto al mismo topico y ms-orders no
-> cambia ni una linea."
-
----
-
-## 5. Video `1-cluster-dos-nodos` (15 s)
-
-> "Este es el cluster de RabbitMQ. Dos nodos, rabbit1 y rabbit2, integrados en
-> un mismo cluster y corriendo con docker-compose en la instancia del broker.
+> "Dos nodos, rabbit1 y rabbit2, integrados en un mismo cluster y levantados
+> con docker-compose en la instancia del broker.
 >
 > Los microservicios se conectan a los dos: si el primero no responde, Spring
 > hace failover al segundo."
 
-**Si preguntan que pasa si se cae un nodo**, la respuesta honesta —y la
-medimos— esta al final de este guion.
-
----
-
-## 6. Video `2-seis-colas-y-sus-dlq` (14 s)
+### 2:02 — Las seis colas
 
 > "Seis colas. Tres de comando —email, cocina y facturacion— y la cola muerta
-> de cada una.
->
-> Cada cola de comando tiene su DLQ como respaldo: ahi van los mensajes que no
-> se pudieron entregar."
+> de cada una, que es su respaldo cuando un mensaje no se puede entregar."
 
----
+### 2:20 — Los dos tipos de exchange
 
-## 7. Video `3-exchanges-direct-y-topic` (12 s)
-
-> "Dos tipos de exchange, y cada uno resuelve un caso distinto.
+> "Dos tipos, y cada uno resuelve un caso distinto.
 >
 > El **direct** enruta por clave exacta. Lo usa el ticket de cocina, que tiene
-> un unico destinatario.
+> un unico destinatario y no admite variantes.
 >
 > El **topic** enruta por patron con comodines. Lo usan el correo y el
-> documento de cobro, que si admiten variantes: el dia que exista
-> `email.send.urgente`, el patron `email.*` lo recibe sin tocar un solo
-> binding.
+> documento de cobro: el dia que exista `email.send.urgente`, el patron
+> `email.*` lo recibe sin tocar un solo binding.
 >
-> El tercero, `cmd.dead.dlx`, es el exchange de dead-lettering: es a donde el
-> broker enruta lo que no se pudo entregar."
+> El tercero, `cmd.dead.dlx`, es el de dead-lettering."
 
----
+### 2:37 — Retencion y limpieza
 
-## 8. Video `4-politicas-de-retencion` (14 s)
-
-> "Estos son los argumentos con que se declara cada cola, y son las politicas
-> de retencion y limpieza.
+> "Estos son los argumentos con que se declara cada cola.
 >
 > `x-dead-letter-exchange` define a donde van los mensajes fallidos.
 >
 > `x-message-ttl` define cuanto vive un comando sin consumir antes de que el
-> broker lo venza. Lo pusimos en 30 segundos para poder demostrarlo en vivo; en
+> broker lo venza. Lo pusimos en 30 segundos para poder demostrarlo; en
 > produccion serian minutos u horas.
 >
-> Las colas muertas tienen su propia politica: 14 dias de retencion y un tope
-> de mil mensajes, para que una tormenta de errores no llene el disco del nodo.
+> Las colas muertas tienen su propia politica: 14 dias de retencion y tope de
+> mil mensajes, para que una tormenta de errores no llene el disco del nodo.
 >
-> Nada de esto esta escrito en el codigo Java: sale del application.yml."
+> Nada de esto esta escrito en el codigo: sale del application.yml."
 
----
+### 2:56 — Que pasa si se cae un consumidor
 
-## 9. Video `5-caida-de-consumidor` (94 s) — el escenario de fallo
+Es el tramo mas largo, 94 segundos. Conviene narrarlo por partes.
 
-Es el mas largo y el mas importante. Conviene narrarlo por tramos.
-
-**0:00 - 0:15 — Punto de partida**
+**2:56 · Punto de partida**
 
 > "La cola de cocina con su consumidor enganchado, trabajando normal."
 
-**0:15 - 0:30 — Se cae el consumidor**
+**3:10 · Se cae el consumidor**
 
-> "Ahora bajo el microservicio consumidor. Vean que los consumidores pasan a
-> cero: la cola sigue existiendo, pero no hay nadie que la atienda."
+> "Bajo el microservicio consumidor. Los consumidores pasan a cero: la cola
+> sigue existiendo, pero no hay nadie que la atienda."
 
-**0:30 - 0:45 — Llega un comando valido**
+**3:25 · Llega un comando valido**
 
-> "Publico un comando perfectamente valido por el exchange direct. Ojo: este
-> mensaje no tiene nada malo. El problema no es el mensaje, es que el servicio
-> que tenia que atenderlo no esta."
+> "Publico un comando perfectamente valido por el exchange direct. Ojo: **este
+> mensaje no tiene nada malo**. El problema no es el mensaje, es que el
+> servicio que tenia que atenderlo no esta."
 
-**0:45 - 1:05 — El mensaje espera**
+**3:40 · El mensaje espera**
 
-> "El mensaje queda encolado. Un mensaje, cero consumidores. Si no hicieramos
-> nada, se quedaria ahi para siempre."
+> "Queda encolado. Un mensaje, cero consumidores. Si no hicieramos nada, se
+> quedaria ahi para siempre."
 
-**1:05 - 1:25 — Vence y cae a la cola muerta**
+**4:00 · Vence y cae a la cola muerta**
 
 > "Pero vence el TTL de 30 segundos y el broker lo enruta solo a la cola
-> muerta. La cola de comando queda en cero y la DLQ pasa a uno. Nadie
-> intervino: lo hizo el propio RabbitMQ con la politica que configuramos."
+> muerta. La cola de comando queda en cero, la DLQ pasa a uno. Nadie
+> intervino: lo hizo RabbitMQ con la politica que configuramos."
 
-**1:25 - 1:34 — La prueba**
+**4:18 · La prueba**
 
 > "Y aca esta la evidencia. Abro el mensaje en la cola muerta y el broker dejo
 > escrito el motivo en el header `x-death`: **`reason: expired`**.
 >
 > Eso lo distingue del otro camino. Si un consumidor rechaza un mensaje por
-> venir mal formado, el motivo dice `rejected`. Aca dice `expired`, que
-> significa que nadie lo consumio a tiempo.
+> venir mal formado, el motivo dice `rejected`. Aca dice `expired`: nadie lo
+> consumio a tiempo.
 >
 > Son dos caminos distintos hacia la misma cola muerta, y el sistema distingue
 > entre 'el mensaje estaba malo' y 'el servicio no estaba disponible'."
+
+### 4:30 — Cierre
+
+> "Eso es todo el flujo: identidad federada, el API Gateway validando el token
+> en el borde, un cluster de dos nodos, seis colas con sus colas muertas, los
+> dos tipos de exchange con trafico real, y un fallo soportado sin perder el
+> mensaje."
 
 ---
 
@@ -239,12 +225,11 @@ Es el mas largo y el mas importante. Conviene narrarlo por tramos.
 
 **¿Como manejan la confirmacion de mensajes?**
 
-> Los consumidores corren en modo MANUAL: ningun mensaje se da por procesado
-> hasta que el codigo lo confirma. Hay tres salidas, todas en una sola clase
-> para que la politica sea identica en las tres colas. Si el trabajo termina
-> bien, ACK. Si falla con un error recuperable y quedan intentos, NACK con
-> requeue. Si se agotan los intentos, o el error es del mensaje mismo, o es una
-> excepcion inesperada, NACK sin requeue y va a la DLQ.
+> En modo MANUAL: ningun mensaje se da por procesado hasta que el codigo lo
+> confirma. Hay tres salidas, todas en una sola clase para que la politica sea
+> identica en las tres colas. Trabajo terminado, ACK. Error recuperable con
+> intentos restantes, NACK con requeue. Intentos agotados, error del mensaje
+> mismo, o excepcion inesperada, NACK sin requeue y a la DLQ.
 
 **¿Por que una excepcion desconocida va directo a la cola muerta?**
 
@@ -254,12 +239,12 @@ Es el mas largo y el mas importante. Conviene narrarlo por tramos.
 
 **¿Donde esta el microservicio administrador?**
 
-> `ms-pedidos360-mqadmin`, en el puerto 8086. Expone ocho endpoints REST para
-> crear y eliminar colas, exchanges y bindings en caliente. Toda la interaccion
-> con RabbitMQ esta encapsulada en `RabbitAdminService`: los controladores no
-> importan nada de la libreria de AMQP, se puede verificar con un grep. Y es
-> solo para rol Admin, porque esos endpoints pueden borrar las colas de las que
-> depende el resto del sistema.
+> `ms-pedidos360-mqadmin`, puerto 8086. Ocho endpoints REST para crear y
+> eliminar colas, exchanges y bindings en caliente. Toda la interaccion con
+> RabbitMQ esta encapsulada en `RabbitAdminService`: los controladores no
+> importan nada de la libreria de AMQP, se verifica con un grep. Solo rol
+> Admin, porque esos endpoints pueden borrar las colas de las que depende el
+> resto del sistema.
 
 **¿Como monitorean el cluster?**
 
@@ -275,3 +260,14 @@ Es el mas largo y el mas importante. Conviene narrarlo por tramos.
 > docker-compose que mostrar, no hay dos nodos que nosotros configuramos en
 > cluster, y el microservicio administrador pierde sentido: el cluster lo
 > administraria AWS.
+
+---
+
+## Si hay que rehacer el video
+
+```bash
+node montaje/tarjetas.mjs   # regenera las tarjetas de transicion
+./montaje/montar.sh         # vuelve a unir todo
+```
+
+Para regrabar los clips, ver [README.md](README.md).

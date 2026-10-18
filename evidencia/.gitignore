@@ -4,3 +4,7 @@ reporte/
 test-results/
 # La sesion de Azure AD guardada: nunca se versiona.
 .auth/
+
+# Piezas intermedias del montaje; el MP4 final si se versiona.
+montaje/clips/
+montaje/png/*.html

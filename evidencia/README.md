@@ -6,7 +6,25 @@ hacerlo en vivo, donde cualquier cosa puede fallar.
 
 El guion de lo que se dice en cada momento esta en **[GUION.md](GUION.md)**.
 
-## Los siete videos
+## El entregable
+
+**`entregables/pedidos360-demostracion.mp4`** — 4 min 36 s.
+
+Un solo video con todo el recorrido, con tarjetas de transicion que anuncian
+cada tramo. Se puede dejar correr de principio a fin mientras se narra; el
+guion con las marcas de tiempo esta en [GUION.md](GUION.md).
+
+Se arma con:
+
+```bash
+node montaje/tarjetas.mjs   # tarjetas de transicion, renderizadas con el navegador
+./montaje/montar.sh         # normaliza todo a H.264 y lo une
+```
+
+Las tarjetas se renderizan como HTML y se capturan con Playwright, no con
+ffmpeg: este ffmpeg viene sin freetype y no tiene el filtro `drawtext`.
+
+## Los siete clips que lo componen
 
 | Archivo | Duracion | Que demuestra |
 |---|---|---|
@@ -18,7 +36,8 @@ El guion de lo que se dice en cada momento esta en **[GUION.md](GUION.md)**.
 | `6-login-catalogo-y-pedido` | 49 s | OAuth 2.0/OIDC, catalogo real y creacion de un pedido |
 | `7-auditoria-y-reportes` | 36 s | Los consumidores reaccionando al evento |
 
-Total: 237 segundos. Con la narracion queda entre 7 y 9 minutos.
+Total: 237 segundos de grabacion, mas 43 de tarjetas y portada.
+Con la narracion la presentacion queda entre 8 y 10 minutos.
 
 ## Como volver a grabarlos
 
