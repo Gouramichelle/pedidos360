@@ -26,6 +26,11 @@ SALIDA=entregables/8-app-y-broker-en-paralelo.mp4
 
 dur() { ffprobe -v error -show_entries format=duration -of csv=p=0 "$1"; }
 
+# Segundos que se recortan del arranque de AMBOS videos. Quita la carga de las
+# dos paginas, que no aporta nada, y hace que el tramo empiece con las dos
+# pantallas ya pobladas. Recortar lo mismo de los dos no altera la sincronia.
+RECORTE="${RECORTE:-7}"
+
 DESF="$(python3 -c "import json;print(json.load(open('$MARCAS'))['app']/1000)")"
 if (( $(echo "$DESF >= 0" | bc -l) )); then PAD_APP=0; PAD_CON="$DESF"
 else PAD_APP="$(echo "0 - $DESF" | bc -l)"; PAD_CON=0; fi
@@ -38,7 +43,9 @@ printf '  consola        : %.1fs\n' "$(dur "$CON")"
 # proceso se corta a mitad, el archivo bueno anterior queda intacto en vez de
 # quedar truncado.
 TMP="$(mktemp -t paralelo).mp4"
-ffmpeg -y -loglevel error -i "$APP" -i "$CON" -i montaje/png/rotulo.png -filter_complex "
+printf '  recorte inicial: %ss\n' "$RECORTE"
+
+ffmpeg -y -loglevel error -ss "$RECORTE" -i "$APP" -ss "$RECORTE" -i "$CON" -i montaje/png/rotulo.png -filter_complex "
   [0:v]tpad=start_duration=$PAD_APP:start_mode=clone,scale=640:360:flags=lanczos[a];
   [1:v]tpad=start_duration=$PAD_CON:start_mode=clone,scale=640:360:flags=lanczos[b];
   [a][b]hstack=inputs=2:shortest=1[s];

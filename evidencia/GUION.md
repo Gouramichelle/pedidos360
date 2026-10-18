@@ -1,6 +1,6 @@
 # Guion de la presentacion
 
-Un solo video: **`entregables/pedidos360-demostracion.mp4`**, 5 min 50 s.
+Un solo video: **`entregables/pedidos360-demostracion.mp4`**, 5 min 35 s.
 
 Cada tarjeta de transicion anuncia lo que viene detras, asi que funciona como
 hilo conductor: se puede dejar correr de principio a fin mientras se narra.
@@ -114,46 +114,47 @@ Dejar correr. Arrancar cuando aparezca la primera tarjeta.
 Dos navegadores corriendo al mismo tiempo contra el mismo despliegue. Es el
 tramo que demuestra que nada esta preparado.
 
-**1:43 · Arranque**
+**1:43 · El punto de partida**
 
 > "A la izquierda la aplicacion, a la derecha la consola de RabbitMQ. Dos
-> navegadores distintos, a la vez. Las seis colas estan en cero."
+> navegadores distintos, a la vez, contra el mismo despliegue.
+>
+> Miren la derecha antes de que pase nada: **las seis colas en cero**. Esto hay
+> que verlo, porque si no, lo que viene despues no probaria nada."
 
-**2:07 · La pausa, y por que**
+**1:52 · La pausa, y por que**
 
-> "Antes de confirmar voy a **pausar el consumidor**, y quiero explicar por
-> que, porque importa.
+> "Voy a **pausar el consumidor** antes de confirmar, y conviene que explique
+> por que.
 >
 > Con los tres consumidores andando, un mensaje se publica y se procesa en
 > milisegundos. La consola muestrea cada cinco segundos: cuando refresca ya no
-> queda nada, el contador se queda en cero y parece que no paso nada. Pausando
-> el consumidor el mensaje se queda a la vista.
+> queda nada y el contador se queda en cero. Pausando el consumidor, el mensaje
+> se queda a la vista.
 >
 > Es el mismo trafico. Solo lo estoy haciendo visible."
 
-**2:13 · El momento**
+**1:59 · El momento**
 
 > "Confirmo el pedido. Miren la derecha: **las tres colas de comando pasan a
-> tener un mensaje**. Email, cocina y facturacion. Una sola accion, tres
-> comandos.
+> tener un mensaje**. Email, cocina y facturacion. Una sola accion del usuario,
+> tres comandos.
 >
-> Y fijense en que columna: **Unacked**, no Ready. Significa que el consumidor
-> ya los recibio pero todavia no los confirmo. Eso es el modo de confirmacion
-> MANUAL: el mensaje no se da por procesado hasta que el codigo lo confirma."
+> Y fijense en que columna: **Unacked**, no Ready. El consumidor ya los recibio
+> pero todavia no los confirmo. Eso es el modo de confirmacion MANUAL."
 
-**2:25 · La prueba de que es el mismo instante**
+**2:10 · La prueba de que es el mismo instante**
 
-> "Si quieren verificar que los dos lados son el mismo momento, estan los dos
-> relojes. El pedido dice creado a la **1:30:21**. La consola dice refrescado a
-> la **1:30:30**. Nueve segundos despues, que es lo que tarda el siguiente
-> refresco en recoger los mensajes."
+> "Si dudan de que los dos lados sean el mismo momento, estan los relojes. El
+> pedido dice creado a una hora, y la consola refrescada unos segundos despues.
+> Son dos relojes reales, no un montaje."
 
-**2:32 · Se reanuda**
+**2:18 · Se reanuda**
 
 > "Reanudo el consumidor y las tres colas vuelven a cero: los proceso y los
 > confirmo. Ese es el ciclo completo, visto desde los dos lados a la vez."
 
-### 2:56 — El cluster de RabbitMQ
+### 2:42 — El cluster de RabbitMQ
 
 > "Dos nodos, rabbit1 y rabbit2, integrados en un mismo cluster y levantados
 > con docker-compose en la instancia del broker.
@@ -161,12 +162,12 @@ tramo que demuestra que nada esta preparado.
 > Los microservicios se conectan a los dos: si el primero no responde, Spring
 > hace failover al segundo."
 
-### 3:16 — Las seis colas
+### 3:02 — Las seis colas
 
 > "Seis colas. Tres de comando —email, cocina y facturacion— y la cola muerta
 > de cada una, que es su respaldo cuando un mensaje no se puede entregar."
 
-### 3:34 — Los dos tipos de exchange
+### 3:20 — Los dos tipos de exchange
 
 > "Dos tipos, y cada uno resuelve un caso distinto.
 >
@@ -179,7 +180,7 @@ tramo que demuestra que nada esta preparado.
 >
 > El tercero, `cmd.dead.dlx`, es el de dead-lettering."
 
-### 3:51 — Retencion y limpieza
+### 3:36 — Retencion y limpieza
 
 > "Estos son los argumentos con que se declara cada cola.
 >
@@ -194,37 +195,37 @@ tramo que demuestra que nada esta preparado.
 >
 > Nada de esto esta escrito en el codigo: sale del application.yml."
 
-### 4:10 — Que pasa si se cae un consumidor
+### 3:55 — Que pasa si se cae un consumidor
 
 Es el tramo mas largo, 94 segundos. Conviene narrarlo por partes.
 
-**4:10 · Punto de partida**
+**3:55 · Punto de partida**
 
 > "La cola de cocina con su consumidor enganchado, trabajando normal."
 
-**4:24 · Se cae el consumidor**
+**4:09 · Se cae el consumidor**
 
 > "Bajo el microservicio consumidor. Los consumidores pasan a cero: la cola
 > sigue existiendo, pero no hay nadie que la atienda."
 
-**4:39 · Llega un comando valido**
+**4:24 · Llega un comando valido**
 
 > "Publico un comando perfectamente valido por el exchange direct. Ojo: **este
 > mensaje no tiene nada malo**. El problema no es el mensaje, es que el
 > servicio que tenia que atenderlo no esta."
 
-**4:54 · El mensaje espera**
+**4:39 · El mensaje espera**
 
 > "Queda encolado. Un mensaje, cero consumidores. Si no hicieramos nada, se
 > quedaria ahi para siempre."
 
-**5:14 · Vence y cae a la cola muerta**
+**4:59 · Vence y cae a la cola muerta**
 
 > "Pero vence el TTL de 30 segundos y el broker lo enruta solo a la cola
 > muerta. La cola de comando queda en cero, la DLQ pasa a uno. Nadie
 > intervino: lo hizo RabbitMQ con la politica que configuramos."
 
-**5:32 · La prueba**
+**5:17 · La prueba**
 
 > "Y aca esta la evidencia. Abro el mensaje en la cola muerta y el broker dejo
 > escrito el motivo en el header `x-death`: **`reason: expired`**.
@@ -236,7 +237,7 @@ Es el tramo mas largo, 94 segundos. Conviene narrarlo por partes.
 > Son dos caminos distintos hacia la misma cola muerta, y el sistema distingue
 > entre 'el mensaje estaba malo' y 'el servicio no estaba disponible'."
 
-### 5:44 — Cierre
+### 5:29 — Cierre
 
 > "Eso es todo el flujo: identidad federada, el API Gateway validando el token
 > en el borde, un cluster de dos nodos, seis colas con sus colas muertas, los

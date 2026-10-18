@@ -96,24 +96,26 @@ test.describe('La app y el broker al mismo tiempo', () => {
 
     // La app deja el pedido armado, sin confirmar todavia.
     await app.goto(`${APP}/orders/nuevo`);
-    await app.waitForTimeout(2500);
+    await app.waitForTimeout(1500);
 
     const producto = app.locator('select').nth(1);
     const cantidad = app.locator('input[type="number"]').first();
     await producto.selectOption({ index: 1 });
     await cantidad.fill('3');
     await app.locator('button:has-text("Agregar")').click();
-    await app.waitForTimeout(1500);
+    await app.waitForTimeout(900);
     await producto.selectOption({ index: 2 });
     await cantidad.fill('2');
     await app.locator('button:has-text("Agregar")').click();
-    await app.waitForTimeout(2500);
+    await app.waitForTimeout(1500);
 
     // Se pausa el consumidor justo antes de confirmar, para que los mensajes
     // se queden a la vista en vez de procesarse al instante.
     enApps('cd ~/infra/apps && sudo docker compose pause ms-notify');
     marcas.pausa = Date.now() - tConsola;
-    await consola.waitForTimeout(6000);
+    // Un refresco de consola alcanza: pausar no cambia nada en pantalla, el
+    // consumidor sigue figurando conectado porque la conexion AMQP no se cierra.
+    await consola.waitForTimeout(3000);
 
     // El momento: una sola accion publica tres comandos.
     await app.locator('button:has-text("Confirmar pedido")').click();
