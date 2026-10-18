@@ -15,7 +15,8 @@ clasificar() {
     *mas-el-de-dead-lettering*)   echo "3-exchanges-direct-y-topic" ;;
     *retencion-y-dead-lettering*) echo "4-politicas-de-retencion" ;;
     *cola-muerta*)                echo "5-caida-de-consumidor" ;;
-    *login*|*pedido*|*app*)       echo "6-flujo-completo-en-la-app" ;;
+    *creacion-de-un-pedido*)      echo "6-login-catalogo-y-pedido" ;;
+    *recien-creado*)              echo "7-auditoria-y-reportes" ;;
     *)                            echo "" ;;
   esac
 }
