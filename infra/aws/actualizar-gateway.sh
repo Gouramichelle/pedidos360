@@ -59,10 +59,20 @@ aws apigatewayv2 get-integrations --region "$REGION" --api-id "$API_ID" \
 echo
 azul "-- CORS --"
 
+# Minimo privilegio, dos decisiones:
+#
+#   - Un unico origen: el del frontend desplegado. No se agrega
+#     http://localhost:4200, porque permitiria que una pagina servida desde el
+#     localhost de cualquier maquina llame a esta API con un token valido. Para
+#     desarrollar en local estan los microservicios locales y el perfil dev.
+#
+#   - Los cinco metodos que el frontend realmente emite, auditados sobre
+#     core/api/: GET, POST, PUT, PATCH y DELETE. OPTIONS no va en la lista:
+#     Access-Control-Allow-Methods declara los metodos de la peticion REAL, y
+#     el preflight nunca lo es.
 ORIGEN="https://${APPS_IP_PUBLICA}:8085"
 aws apigatewayv2 update-api --region "$REGION" --api-id "$API_ID" \
-  --cors-configuration \
-    "AllowOrigins=$ORIGEN,http://localhost:4200,AllowMethods=GET,POST,PUT,PATCH,DELETE,OPTIONS,AllowHeaders=authorization,content-type,MaxAge=3600" \
+  --cors-configuration "AllowOrigins=$ORIGEN,AllowMethods=GET,POST,PUT,PATCH,DELETE,AllowHeaders=authorization,content-type,MaxAge=3600" \
   >/dev/null
 ok "origen permitido: $ORIGEN"
 

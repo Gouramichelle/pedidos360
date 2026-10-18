@@ -42,6 +42,12 @@ export default defineConfig({
       use: { httpCredentials: { username: 'guest', password: 'guest' } },
     },
     {
+      // Abre sus propios contextos con grabacion separada, uno por pantalla,
+      // asi que no declara ni storageState ni httpCredentials aqui.
+      name: 'paralelo',
+      testMatch: /03-paralelo\/.*\.spec\.ts/,
+    },
+    {
       name: 'app',
       testMatch: /02-app\/.*\.spec\.ts/,
       // Sesion de Azure AD guardada por `npm run sesion`. El login lo hace la

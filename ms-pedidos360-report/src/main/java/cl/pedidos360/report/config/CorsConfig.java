@@ -23,7 +23,10 @@ public class CorsConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(allowedOrigins);
-        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        // Los cinco metodos que el frontend realmente emite. OPTIONS no va:
+        // Access-Control-Allow-Methods declara los metodos de la peticion
+        // REAL, y el preflight nunca lo es.
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         cfg.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -94,7 +94,9 @@ cat >> "$TMP_ENV" <<ENV
 # Reescritas por desplegar.sh el $(date '+%Y-%m-%d %H:%M')
 RABBITMQ_ADDRESSES=$BROKER_IP_PRIVADA:5672,$BROKER_IP_PRIVADA:5673
 KAFKA_BOOTSTRAP_SERVERS=$BROKER_IP_PRIVADA:9092
-ALLOWED_ORIGINS=https://$APPS_IP_PUBLICA:8085,http://localhost:4200
+# Un unico origen: el del frontend desplegado. Sin localhost, que en
+# produccion permitiria que cualquier pagina local llame a esta API.
+ALLOWED_ORIGINS=https://$APPS_IP_PUBLICA:8085
 ENV
 scp "${SSH_OPTS[@]}" -q "$TMP_ENV" "ec2-user@$APPS_IP_PUBLICA:~/infra/apps/.env"
 rm -f "$TMP_ENV"

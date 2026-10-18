@@ -53,10 +53,21 @@ fi
 
 # ------------------------------------------------------------------- API
 
+# Minimo privilegio, dos decisiones:
+#
+#   - Un unico origen: el del frontend desplegado. No se agrega
+#     http://localhost:4200, porque permitiria que una pagina servida desde el
+#     localhost de cualquier maquina llame a esta API con un token valido. Para
+#     desarrollar en local estan los microservicios locales y el perfil dev.
+#
+#   - Los cinco metodos que el frontend realmente emite, auditados sobre
+#     core/api/: GET, POST, PUT, PATCH y DELETE. OPTIONS no va en la lista:
+#     Access-Control-Allow-Methods declara los metodos de la peticion REAL, y
+#     el preflight nunca lo es.
 ORIGEN="https://${APPS_IP_PUBLICA}:8085"
 API_ID="$(aws apigatewayv2 create-api --region "$REGION" \
   --name "$NOMBRE_API" --protocol-type HTTP \
-  --cors-configuration "AllowOrigins=$ORIGEN,http://localhost:4200,AllowMethods=GET,POST,PUT,PATCH,DELETE,OPTIONS,AllowHeaders=authorization,content-type,MaxAge=3600" \
+  --cors-configuration "AllowOrigins=$ORIGEN,AllowMethods=GET,POST,PUT,PATCH,DELETE,AllowHeaders=authorization,content-type,MaxAge=3600" \
   --query 'ApiId' --output text)"
 ok "API creada ($API_ID)"
 
