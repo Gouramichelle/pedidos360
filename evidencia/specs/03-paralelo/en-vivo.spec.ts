@@ -1,4 +1,4 @@
-import { test, expect, Page, BrowserContext } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { enApps } from '../entorno';
 
 /**
@@ -24,8 +24,7 @@ import { enApps } from '../entorno';
 const APP = 'https://3.83.237.65:8085';
 const CONSOLA = 'http://localhost:15672';
 
-async function abrirConsola(ctx: BrowserContext): Promise<Page> {
-  const page = await ctx.newPage();
+async function iniciarSesionConsola(page: Page): Promise<void> {
   await page.goto(CONSOLA);
   const usuario = page.locator('input[name="username"]');
   if (await usuario.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -34,7 +33,6 @@ async function abrirConsola(ctx: BrowserContext): Promise<Page> {
     await page.locator('input[type="submit"]').click();
   }
   await expect(page.locator('#menu').first()).toBeVisible({ timeout: 20000 });
-  return page;
 }
 
 test.describe('La app y el broker al mismo tiempo', () => {
@@ -57,8 +55,15 @@ test.describe('La app y el broker al mismo tiempo', () => {
       ignoreHTTPSErrors: true,
     });
 
-    const consola = await abrirConsola(ctxConsola);
+    // Las dos paginas se crean juntas y ANTES de navegar a ningun lado.
+    // Playwright arranca el video de cada pagina en el momento en que se crea,
+    // asi que si una se creara despues de que la otra ya hizo login, los dos
+    // videos quedarian desfasados por ese tiempo y la composicion lado a lado
+    // mostraria momentos distintos.
+    const consola = await ctxConsola.newPage();
     const app = await ctxApp.newPage();
+
+    await iniciarSesionConsola(consola);
 
     // La consola se queda en la lista de colas, que es donde se ve el contador
     // de cada una. Arranca en cero.

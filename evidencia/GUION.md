@@ -120,7 +120,7 @@ al mismo tiempo** contra el mismo despliegue.
 > navegadores distintos, a la vez, contra el mismo despliegue. Las seis colas
 > estan en cero."
 
-**2:10 · La pausa, y por que**
+**2:18 · La pausa, y por que**
 
 > "Antes de confirmar el pedido voy a **pausar el consumidor**, y quiero
 > explicar por que, porque es importante.
@@ -132,7 +132,7 @@ al mismo tiempo** contra el mismo despliegue.
 >
 > Es el mismo trafico. Solo lo estoy haciendo visible."
 
-**2:25 · El momento**
+**2:40 · El momento**
 
 > "Confirmo el pedido. Y miren la derecha: **las tres colas de comando pasan a
 > tener un mensaje**. Email, cocina y facturacion. Una sola accion del usuario,
@@ -143,7 +143,7 @@ al mismo tiempo** contra el mismo despliegue.
 > confirmacion MANUAL: el mensaje no se da por procesado hasta que el codigo lo
 > confirma explicitamente."
 
-**2:50 · Se reanuda**
+**2:52 · Se reanuda**
 
 > "Reanudo el consumidor. Y las tres colas vuelven a cero: los proceso y los
 > confirmo.

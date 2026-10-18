@@ -35,13 +35,17 @@ ffmpeg: este ffmpeg viene sin freetype y no tiene el filtro `drawtext`.
 | `5-caida-de-consumidor` | 94 s | El escenario de fallo completo, con `x-death: expired` |
 | `6-login-catalogo-y-pedido` | 49 s | OAuth 2.0/OIDC, catalogo real y creacion de un pedido |
 | `7-auditoria-y-reportes` | 36 s | Los consumidores reaccionando al evento |
-| `8-app-y-broker-en-paralelo` | 66 s | La app y la consola del broker **al mismo tiempo** |
+| `8-app-y-broker-en-paralelo` | 79 s | La app y la consola del broker **al mismo tiempo** |
 
 Total: 303 segundos de grabacion, mas 43 de tarjetas y portada.
 Con la narracion la presentacion queda entre 9 y 11 minutos.
 
 El tramo en paralelo se graba con dos contextos de navegador a la vez, cada uno
-con su propio video, y despues se componen lado a lado con ffmpeg. Es el que
+con su propio video, y despues se componen lado a lado con
+`montaje/montar-paralelo.sh`. Ese script **mide el desfase en cada corrida** y
+lo compensa: los dos videos terminan juntos, asi que si uno dura mas es porque
+arranco antes, y esa diferencia es exactamente lo que hay que anteponerle al
+otro. Apilarlos desde el cero de cada archivo los desincroniza. Es el que
 demuestra que la conexion es real: una accion en la aplicacion y su efecto en
 el broker, en el mismo instante.
 
