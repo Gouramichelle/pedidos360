@@ -1,0 +1,6 @@
+node_modules/
+videos/
+reporte/
+test-results/
+# La sesion de Azure AD guardada: nunca se versiona.
+.auth/

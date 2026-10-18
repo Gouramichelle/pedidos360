@@ -47,7 +47,9 @@ if [ -n "$API_ID" ] && [ "$API_ID" != "None" ]; then
     -H 'Access-Control-Request-Method: GET' \
     -H 'Access-Control-Request-Headers: authorization' \
     "$API_ID/api/orders")"
-  comprobar "preflight de CORS pasa sin token" 204 "$PREFLIGHT"
+  # 200 y no 204: el API Gateway responde el preflight con 200 y los headers
+  # de CORS. Lo que importa es que pase sin token, no el codigo exacto.
+  comprobar "preflight de CORS pasa sin token" 200 "$PREFLIGHT"
 else
   aviso "no pude resolver el Invoke URL del Gateway, me salto esta seccion"
 fi
@@ -55,16 +57,19 @@ fi
 echo
 azul "-- Cluster de RabbitMQ --"
 if [ -f "$PEM" ]; then
+  # cluster_status nombra cada nodo en varias secciones (Disk Nodes, Running
+  # Nodes, Versions...), asi que contar lineas da de mas: hay que contar
+  # nombres unicos.
   NODOS="$(ssh "${SSH_OPTS[@]}" "ec2-user@$BROKER_IP_PUBLICA" \
-    "sudo docker exec mq-rabbit1-1 rabbitmq-diagnostics -q cluster_status 2>/dev/null | grep -c '^rabbit@rabbit'" 2>/dev/null || echo 0)"
+    "sudo docker exec mq-rabbit1-1 rabbitmq-diagnostics -q cluster_status 2>/dev/null | grep -o 'rabbit@rabbit[0-9]*' | sort -u | wc -l" 2>/dev/null | tr -d ' ' || echo 0)"
   comprobar "nodos en el cluster" 2 "$NODOS"
 
   COLAS="$(ssh "${SSH_OPTS[@]}" "ec2-user@$BROKER_IP_PUBLICA" \
-    "sudo docker exec mq-rabbit1-1 rabbitmqctl list_queues --quiet name 2>/dev/null | grep -c '^q\.cmd\.'" 2>/dev/null || echo 0)"
+    "sudo docker exec mq-rabbit1-1 rabbitmqctl -q list_queues name 2>/dev/null | grep -c '^q\.cmd\.'" 2>/dev/null | tr -d ' ' || echo 0)"
   comprobar "colas declaradas (3 comando + 3 DLQ)" 6 "$COLAS"
 
   TTL="$(ssh "${SSH_OPTS[@]}" "ec2-user@$BROKER_IP_PUBLICA" \
-    "sudo docker exec mq-rabbit1-1 rabbitmqctl list_queues --quiet name arguments 2>/dev/null | grep -c 'x-message-ttl'" 2>/dev/null || echo 0)"
+    "sudo docker exec mq-rabbit1-1 rabbitmqctl -q list_queues name arguments 2>/dev/null | grep -c 'x-message-ttl'" 2>/dev/null | tr -d ' ' || echo 0)"
   comprobar "colas con politica de retencion" 6 "$TTL"
 else
   aviso "sin la llave $PEM no puedo revisar el broker"

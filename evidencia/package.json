@@ -1,0 +1,15 @@
+{
+  "name": "pedidos360-evidencia",
+  "private": true,
+  "description": "Graba en video el recorrido completo de la demostracion de EP3/EP4",
+  "scripts": {
+    "sesion": "playwright codegen --save-storage=.auth/sesion.json",
+    "grabar": "playwright test",
+    "grabar:broker": "playwright test specs/01-broker",
+    "grabar:app": "playwright test specs/02-app",
+    "ver": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}
