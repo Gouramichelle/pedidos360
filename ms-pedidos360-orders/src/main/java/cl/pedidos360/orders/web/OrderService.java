@@ -98,11 +98,18 @@ public class OrderService {
      * Un cambio de estado produce un evento y uno o mas comandos, todos con el
      * mismo correlationId para poder seguir la operacion de punta a punta.
      *
-     * El evento se publica siempre: es la fuente de verdad de auditoria y
-     * reportes, y a esos servicios les interesa toda transicion. Los comandos,
-     * en cambio, se disparan solo cuando el trabajo tiene sentido: la cocina no
-     * necesita un ticket de un pedido que todavia no se acepto, y no se puede
-     * cobrar un pedido que aun podria cancelarse.
+     * El evento de Kafka se publica siempre: es la fuente de verdad de
+     * auditoria y reportes, y a esos servicios les interesa toda transicion.
+     *
+     * Los comandos se reparten asi: al CREAR el pedido se dispara el flujo
+     * completo -- notificacion, ticket de cocina y documento de cobro -- de
+     * modo que una sola accion del usuario ejercita los tres dominios y sus
+     * tres colas. Los cambios de estado posteriores solo notifican al cliente,
+     * porque ni la cocina ni la facturacion necesitan enterarse dos veces del
+     * mismo pedido.
+     *
+     * CREADO identifica la creacion sin ambiguedad: la maquina de estados solo
+     * avanza, asi que ningun pedido vuelve a ese estado.
      */
     private void publicarEventos(Order order, OrderStatus estadoAnterior, String actor) {
         String trace = UUID.randomUUID().toString();
@@ -112,10 +119,8 @@ public class OrderService {
 
         emailPublisher.notificarCambioEstado(order, trace, correlationId);
 
-        if (order.getStatus() == OrderStatus.ACEPTADO) {
+        if (order.getStatus() == OrderStatus.CREADO) {
             kitchenPublisher.emitirTicket(order, trace, correlationId);
-        }
-        if (order.getStatus() == OrderStatus.ENTREGADO) {
             invoicePublisher.generarDocumento(order, trace, correlationId);
         }
     }

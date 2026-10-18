@@ -14,9 +14,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * escribir, asi que agregar un flujo nuevo es agregar una entrada en el yml.
  */
 @ConfigurationProperties(prefix = "mensajeria")
-public record MensajeriaProperties(Exchanges exchanges, Map<String, Flujo> flujos) {
+public record MensajeriaProperties(Exchanges exchanges, Retencion retencion, Map<String, Flujo> flujos) {
 
     public record Exchanges(String direct, String topic, String dlx) {
+    }
+
+    /**
+     * @param ttlComandoMs   cuanto vive un comando sin consumir antes de que el
+     *                       broker lo venza y lo enrute a la DLQ
+     * @param ttlDlqMs       cuanto se conserva la evidencia en la DLQ
+     * @param maxMensajesDlq tope de mensajes en la DLQ; al superarlo se
+     *                       descartan los mas antiguos
+     */
+    public record Retencion(long ttlComandoMs, long ttlDlqMs, int maxMensajesDlq) {
     }
 
     /**

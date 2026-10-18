@@ -613,11 +613,23 @@ consumidores viven en `ms-pedidos360-notify`, agrupados por dominio en
 paquetes separados (`messaging/email`, `messaging/kitchen`,
 `messaging/invoice`), con lo comun en `messaging/comun`.
 
-| Dominio | Cola | Exchange | Routing key | Se dispara cuando |
-|---|---|---|---|---|
-| Notificacion | `q.cmd.email` | `cmd.topic` | `email.send` | En cada cambio de estado |
-| Cocina | `q.cmd.kitchen` | `cmd.direct` | `kitchen.ticket` | El pedido pasa a ACEPTADO |
-| Facturacion | `q.cmd.invoice` | `cmd.topic` | `invoice.gen` | El pedido pasa a ENTREGADO |
+| Dominio | Cola | Exchange | Routing key |
+|---|---|---|---|
+| Notificacion | `q.cmd.email` | `cmd.topic` | `email.send` |
+| Cocina | `q.cmd.kitchen` | `cmd.direct` | `kitchen.ticket` |
+| Facturacion | `q.cmd.invoice` | `cmd.topic` | `invoice.gen` |
+
+Cada una tiene su DLQ (`q.cmd.email.dlq` y las otras dos), asi que son **seis
+colas** en total.
+
+**Crear un pedido dispara los tres comandos**, de modo que una sola accion
+ejercita los tres dominios y se puede ver a los tres consumidores trabajando
+con el mismo `correlationId`. Los cambios de estado posteriores solo notifican
+al cliente.
+
+El diagrama completo de productores, exchanges, colas y consumidores, los dos
+caminos hacia la cola muerta y como reproducir ambos escenarios estan en
+**[docs/mensajeria.md](docs/mensajeria.md)**.
 
 **Por que cocina va por `direct` y los otros dos por `topic`.** Un ticket de
 cocina tiene un unico destinatario y una clave exacta: no hay variantes. El
@@ -626,11 +638,24 @@ correo y el documento de cobro si las admiten, y el dia que existan
 `invoice.*` las reciben sin tocar un solo binding. Los dos tipos de exchange
 estan ahi porque resuelven casos distintos, no por completitud.
 
-**Por que los comandos no se disparan todos juntos.** El evento de Kafka se
-publica en toda transicion, porque auditoria y reportes necesitan la historia
-completa. Los comandos no: la cocina no necesita un ticket de un pedido que
-todavia no se acepto, y no se puede cobrar un pedido que aun podria cancelarse.
-Los tres comparten el `correlationId` del cambio de estado que los origino.
+**El evento de Kafka si se publica en toda transicion**, porque auditoria y
+reportes necesitan la historia completa; los comandos solo al crear. Los tres
+comparten el `correlationId` de la operacion que los origino.
+
+### Retencion y limpieza
+
+Las colas no solo enrutan a la DLQ cuando un consumidor rechaza un mensaje:
+tambien cuando nadie lo consume a tiempo.
+
+| Politica | Valor | Para que |
+|---|---|---|
+| `x-message-ttl` en colas de comando | 30 s | Un comando sin consumir vence y cae a la DLQ en vez de quedarse encolado para siempre |
+| `x-message-ttl` en las DLQ | 14 dias | Retencion de la evidencia |
+| `x-max-length` en las DLQ | 1000 | Una tormenta de errores no llena el disco del nodo |
+
+Esa primera politica es la que cubre la caida de un consumidor, y el broker
+deja el motivo escrito en el header `x-death` de cada mensaje: `rejected` si lo
+rechazo el codigo, `expired` si vencio sin consumirse.
 
 ### La topologia se arma desde el yml
 
@@ -666,6 +691,33 @@ se llama una cola es cambiar el yml, sin tocar una sola clase.
 El bloque tiene que ser identico en `ms-orders` y `ms-notify`: los dos declaran
 la misma topologia de forma idempotente por si uno arranca antes que el otro, y
 declarar una cola dos veces con argumentos distintos falla.
+
+---
+
+## Monitoreo del cluster
+
+La consola de RabbitMQ es la fuente de metricas: **Overview → Nodes** muestra
+los dos nodos con su memoria y disco, y **Queues** la profundidad de cada cola,
+su tasa de entrada y salida y los consumidores enganchados. Es donde se ve en
+vivo que una cola se llena cuando su consumidor se cae.
+
+En la nube no esta expuesta al navegador (`seg-rabbit` solo acepta trafico
+desde `seg-apps`), asi que se abre por tunel SSH:
+
+```bash
+ssh -i labsuser.pem -L 15672:localhost:15672 -L 15673:localhost:15673 ec2-user@<ip-publica-rabbit>
+```
+
+Los logs de los contenedores pueden ademas enviarse a **CloudWatch Logs**, para
+leerlos desde la consola de AWS sin entrar por SSH:
+
+```bash
+sudo docker compose -f docker-compose.yml -f docker-compose.cloudwatch.yml up -d
+```
+
+Es un override opcional porque el driver `awslogs` impide que el contenedor
+arranque si la instancia no tiene permisos sobre CloudWatch. Requiere asignarle
+el instance profile `LabInstanceProfile` a `ec2-apps`.
 
 ---
 

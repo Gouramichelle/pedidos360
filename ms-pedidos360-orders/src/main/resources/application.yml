@@ -47,6 +47,23 @@ mensajeria:
     direct: cmd.direct
     topic: cmd.topic
     dlx: cmd.dead.dlx
+  # Politicas de retencion y limpieza de las colas.
+  #
+  # ttl-comando-ms es la pieza que hace que un mensaje SIN CONSUMIR termine en
+  # la DLQ. Sin esto, si el consumidor esta caido el mensaje se queda encolado
+  # para siempre y la DLQ solo se usa cuando un mensaje se rechaza por venir
+  # mal formado. Con esto, el broker lo vence solo y lo enruta por el
+  # x-dead-letter-exchange.
+  #
+  # 30 segundos es deliberadamente corto para que la caida de un consumidor se
+  # pueda demostrar en vivo. Un despliegue real usaria minutos u horas, segun
+  # cuanto tolere el negocio que un comando llegue tarde.
+  retencion:
+    ttl-comando-ms: 30000
+    # La DLQ guarda evidencia para revisar a mano: se conserva 14 dias y se
+    # limita el largo para que una tormenta de errores no llene el disco.
+    ttl-dlq-ms: 1209600000
+    max-mensajes-dlq: 1000
   flujos:
     # routing-key enruta el comando; patron-topic es el binding del exchange
     # topic, que admite comodines. La DLQ de cada cola cuelga del dlx con la

@@ -169,43 +169,8 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("aceptar el pedido emite el ticket de cocina, y solo ahi")
-    void aceptarEmiteElTicketDeCocina() {
-        Order order = new Order("cliente-1");
-        order.addItem(new OrderItem(10L, "SKU-A", 2, new BigDecimal("100.00")));
-        when(repository.findWithItemsById(1L)).thenReturn(Optional.of(order));
-
-        service.cambiarEstado(1L, OrderStatus.ACEPTADO, "Bearer x", "operador@pedidos360.cl");
-
-        verify(kitchenPublisher, times(1)).emitirTicket(any(Order.class), anyString(), anyString());
-        // Todavia no se entrego: no hay nada que cobrar.
-        verify(invoicePublisher, org.mockito.Mockito.never())
-                .generarDocumento(any(Order.class), anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("entregar el pedido genera el documento de cobro, y no otro ticket de cocina")
-    void entregarGeneraElDocumentoDeCobro() {
-        Order order = new Order("cliente-1");
-        order.addItem(new OrderItem(10L, "SKU-A", 2, new BigDecimal("100.00")));
-        when(repository.findWithItemsById(1L)).thenReturn(Optional.of(order));
-
-        // El pedido tiene que recorrer la maquina de estados completa.
-        service.cambiarEstado(1L, OrderStatus.ACEPTADO, "Bearer x", "op@pedidos360.cl");
-        service.cambiarEstado(1L, OrderStatus.EN_PREPARACION, "Bearer x", "op@pedidos360.cl");
-        service.cambiarEstado(1L, OrderStatus.DESPACHADO, "Bearer x", "op@pedidos360.cl");
-        service.cambiarEstado(1L, OrderStatus.ENTREGADO, "Bearer x", "op@pedidos360.cl");
-
-        verify(invoicePublisher, times(1)).generarDocumento(any(Order.class), anyString(), anyString());
-        // El ticket se emitio una sola vez, al aceptar.
-        verify(kitchenPublisher, times(1)).emitirTicket(any(Order.class), anyString(), anyString());
-        // El correo, en cambio, sale en cada transicion: son cuatro.
-        verify(emailPublisher, times(4)).notificarCambioEstado(any(Order.class), anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("un pedido recien creado no dispara ni cocina ni facturacion")
-    void crearNoDisparaCocinaNiFacturacion() {
+    @DisplayName("crear un pedido dispara los tres comandos, uno por cada cola")
+    void crearDisparaLosTresComandos() {
         when(catalogClient.obtenerProducto(eq(1L), anyString()))
                 .thenReturn(new CatalogClient.Product(1L, "SKU-A", new BigDecimal("10.00"), 50));
 
@@ -213,9 +178,40 @@ class OrderServiceTest {
                 new OrderDtos.CreateOrderRequest(null, List.of(new OrderDtos.OrderItemRequest(1L, 2))),
                 "cliente-1", "Bearer x", "cliente@pedidos360.cl");
 
+        verify(emailPublisher, times(1)).notificarCambioEstado(any(Order.class), anyString(), anyString());
+        verify(kitchenPublisher, times(1)).emitirTicket(any(Order.class), anyString(), anyString());
+        verify(invoicePublisher, times(1)).generarDocumento(any(Order.class), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("los cambios de estado posteriores solo notifican al cliente")
+    void losCambiosPosterioresSoloNotifican() {
+        Order order = new Order("cliente-1");
+        order.addItem(new OrderItem(10L, "SKU-A", 2, new BigDecimal("100.00")));
+        when(repository.findWithItemsById(1L)).thenReturn(Optional.of(order));
+
+        service.cambiarEstado(1L, OrderStatus.ACEPTADO, "Bearer x", "op@pedidos360.cl");
+        service.cambiarEstado(1L, OrderStatus.EN_PREPARACION, "Bearer x", "op@pedidos360.cl");
+
+        verify(emailPublisher, times(2)).notificarCambioEstado(any(Order.class), anyString(), anyString());
         verify(kitchenPublisher, org.mockito.Mockito.never())
                 .emitirTicket(any(Order.class), anyString(), anyString());
         verify(invoicePublisher, org.mockito.Mockito.never())
                 .generarDocumento(any(Order.class), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("el evento de Kafka si sale en cada transicion, no solo al crear")
+    void elEventoDeKafkaSaleEnCadaTransicion() {
+        Order order = new Order("cliente-1");
+        order.addItem(new OrderItem(10L, "SKU-A", 2, new BigDecimal("100.00")));
+        when(repository.findWithItemsById(1L)).thenReturn(Optional.of(order));
+
+        service.cambiarEstado(1L, OrderStatus.ACEPTADO, "Bearer x", "op@pedidos360.cl");
+        service.cambiarEstado(1L, OrderStatus.EN_PREPARACION, "Bearer x", "op@pedidos360.cl");
+        service.cambiarEstado(1L, OrderStatus.DESPACHADO, "Bearer x", "op@pedidos360.cl");
+
+        verify(eventPublisher, times(3)).publicarCambioEstado(
+                any(Order.class), any(OrderStatus.class), anyString(), anyString(), anyString());
     }
 }

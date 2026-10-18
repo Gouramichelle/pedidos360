@@ -1,0 +1,73 @@
+# Envio de los logs de los contenedores a CloudWatch Logs.
+#
+# Es un override opcional, no parte del compose principal: el driver awslogs
+# hace que el contenedor NO ARRANQUE si la instancia no tiene permisos sobre
+# CloudWatch, asi que no conviene que el despliegue por defecto dependa de el.
+#
+# Requisito: la instancia EC2 necesita un IAM instance profile con permisos
+# logs:CreateLogGroup, logs:CreateLogStream y logs:PutLogEvents. En el Learner
+# Lab sirve LabInstanceProfile, que se asigna en
+# EC2 -> Actions -> Security -> Modify IAM role.
+#
+# Se aplica sumandolo al compose principal:
+#
+#   sudo docker compose -f docker-compose.yml -f docker-compose.cloudwatch.yml up -d
+#
+# Despues, en CloudWatch -> Log groups aparece un grupo por servicio y ahi se
+# leen los logs de los consumidores sin entrar por SSH.
+services:
+  ms-orders:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: /pedidos360/ms-orders
+        awslogs-create-group: "true"
+
+  ms-catalog:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: /pedidos360/ms-catalog
+        awslogs-create-group: "true"
+
+  ms-notify:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: /pedidos360/ms-notify
+        awslogs-create-group: "true"
+
+  ms-report:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: /pedidos360/ms-report
+        awslogs-create-group: "true"
+
+  ms-audit:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: /pedidos360/ms-audit
+        awslogs-create-group: "true"
+
+  ms-mqadmin:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: /pedidos360/ms-mqadmin
+        awslogs-create-group: "true"
+
+  frontend:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: /pedidos360/frontend
+        awslogs-create-group: "true"

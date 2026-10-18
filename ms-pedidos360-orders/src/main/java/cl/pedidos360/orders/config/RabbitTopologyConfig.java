@@ -143,16 +143,34 @@ public class RabbitTopologyConfig {
 
     // ------------------------------------------------------------- internos
 
-    /** Cola principal del flujo, con los mensajes rechazados enrutados al DLX. */
+    /**
+     * Cola principal del flujo.
+     *
+     * Dos caminos llevan a la DLQ, y los dos importan:
+     *   - el consumidor rechaza el mensaje (NACK sin requeue), porque venia mal
+     *   - el mensaje vence sin que nadie lo consuma (x-message-ttl)
+     *
+     * El segundo es el que cubre la caida de un consumidor: sin TTL el mensaje
+     * se quedaria encolado indefinidamente y nunca llegaria a la DLQ.
+     */
     private Queue colaDeFlujo(String flujo) {
         return QueueBuilder.durable(mensajeria.flujo(flujo).cola())
                 .withArgument("x-dead-letter-exchange", mensajeria.exchanges().dlx())
                 .withArgument("x-dead-letter-routing-key", routingKey(flujo))
+                .withArgument("x-message-ttl", mensajeria.retencion().ttlComandoMs())
                 .build();
     }
 
+    /**
+     * DLQ del flujo. No tiene dead-lettering propio a proposito: lo que vence
+     * aqui se descarta, que es justamente la politica de limpieza. El tope de
+     * largo evita que una tormenta de errores llene el disco del nodo.
+     */
     private Queue dlqDeFlujo(String flujo) {
-        return QueueBuilder.durable(mensajeria.flujo(flujo).dlq()).build();
+        return QueueBuilder.durable(mensajeria.flujo(flujo).dlq())
+                .withArgument("x-message-ttl", mensajeria.retencion().ttlDlqMs())
+                .withArgument("x-max-length", mensajeria.retencion().maxMensajesDlq())
+                .build();
     }
 
     private String routingKey(String flujo) {
