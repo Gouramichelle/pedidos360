@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 
-import { Marcador } from '../entorno';
+import { Marcador, URL_APP } from '../entorno';
 
 /**
  * Evidencia 3: el recorrido completo en la aplicacion desplegada.
@@ -17,7 +17,7 @@ import { Marcador } from '../entorno';
  * justamente lo que hay que demostrar.
  */
 
-const APP = 'https://3.83.237.65:8085';
+const APP = URL_APP;
 
 async function entrar(page: Page) {
   await page.goto(APP);
@@ -33,11 +33,24 @@ test.describe('Recorrido en la aplicacion desplegada', () => {
     test.setTimeout(5 * 60 * 1000);
 
     const marcas = new Marcador();
-    marcas.marcar('login');
 
     // 1. Login por OAuth 2.0 / OpenID Connect contra el tenant de Azure AD.
-    await entrar(page);
+    //
+    // Se hace paso a paso y con una pausa deliberada en la pantalla de inicio
+    // de sesion. Con la sesion ya abierta en el proveedor, el redirect es casi
+    // instantaneo: sin esta pausa la pantalla de login dura cuatro segundos y
+    // no alcanza para explicar lo que se esta viendo.
+    await page.goto(APP);
+    await page.waitForTimeout(2000);
+    marcas.marcar('login');
+    await page.waitForTimeout(11000);
+
+    marcas.marcar('redirect');
+    await page.locator('button:has-text("Iniciar sesion con Microsoft")').click();
+    await page.waitForURL(/\/dashboard/, { timeout: 60000 });
+    await page.waitForTimeout(3000);
     marcas.marcar('roles');
+    await page.waitForTimeout(5000);
     await expect(page.locator('text=gou.rodriguez@duocuc.cl').first()).toBeVisible();
     // Los roles del token se muestran en la cabecera: vienen del claim "roles".
     await expect(page.locator('text=Admin').first()).toBeVisible();

@@ -22,20 +22,33 @@ TRAMOS = [
     """),
 
     dict(id='app-login', kind='clip', src='entregables/6-login-catalogo-y-pedido.webm',
-         marcas='app', desde='login', hasta='roles', texto="""
-        Empezamos por el inicio de sesion. El frontend usa OAuth dos punto cero
-        y OpenID Connect contra nuestro tenant de Azure. Fijense en el redirect:
-        sale de nuestra aplicacion, pasa por el proveedor de identidad, y vuelve
-        con un codigo que se intercambia por un token de acceso. Es el flujo
-        Authorization Code con PKCE, el correcto para una aplicacion de pagina
-        unica.
+         marcas='app', desde='login', hasta='redirect', texto="""
+        Empezamos por la pantalla de inicio de sesion. La aplicacion no tiene
+        usuarios propios ni guarda contrasenas: delega toda la identidad en
+        Azure, que es nuestro proveedor. Por eso el unico boton dice iniciar
+        sesion con Microsoft.
+        Cuando lo presione, el navegador va a salir de nuestra aplicacion, va a
+        ir al proveedor de identidad, y va a volver con un codigo que la
+        aplicacion intercambia por un token de acceso. Es el flujo Authorization
+        Code con PKCE, el que corresponde a una aplicacion de pagina unica,
+        porque no puede guardar un secreto.
+    """),
+
+    dict(id='app-redirect', kind='clip', src='entregables/6-login-catalogo-y-pedido.webm',
+         marcas='app', desde='redirect', hasta='roles', texto="""
+        Ahi fue, y volvio. El viaje de ida y vuelta al proveedor fue casi
+        instantaneo porque la sesion ya estaba abierta en Azure. Si no lo
+        estuviera, aca se veria la pantalla de credenciales del proveedor, que
+        es justamente donde se escribe la contrasena: nunca en nuestra
+        aplicacion.
     """),
 
     dict(id='app-roles', kind='clip', src='entregables/6-login-catalogo-y-pedido.webm',
          marcas='app', desde='roles', hasta='catalogo', texto="""
-        Ya dentro, arriba aparece el usuario con sus cuatro roles: Admin,
-        Operador, Cliente y Auditor. Esos roles vienen del claim roles del
-        token que emitio Azure, no de nuestra base de datos.
+        Ya estamos dentro, y arriba aparece el usuario con sus cuatro roles:
+        Admin, Operador, Cliente y Auditor. Esos roles no salen de nuestra base
+        de datos: vienen dentro del token, en el claim roles, firmados por
+        Azure. El backend los lee de ahi para decidir que puede hacer cada uno.
     """),
 
     dict(id='app-catalogo', kind='clip', src='entregables/6-login-catalogo-y-pedido.webm',

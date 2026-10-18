@@ -64,3 +64,66 @@ export class Marcador {
     fs.writeFileSync(`montaje/marcas/${archivo}.json`, JSON.stringify(this.pasos, null, 2));
   }
 }
+
+
+/**
+ * Control del consumidor, para los escenarios de fallo.
+ *
+ * El entorno se elige con la variable DESTINO: `local` opera sobre el proceso
+ * de Maven que corre en esta maquina, y `aws` sobre el contenedor en ec2-apps.
+ * La topologia es identica en los dos —el mismo cluster de dos nodos, las
+ * mismas seis colas, los mismos TTL—, asi que la demostracion vale igual.
+ */
+export const DESTINO = process.env.DESTINO ?? 'local';
+export const URL_APP = process.env.URL_APP ?? 'http://localhost:4200';
+
+const raizProyecto = join(__dirname, '..', '..');
+
+/** Baja el consumidor del todo: los consumidores de la cola pasan a cero. */
+export function detenerConsumidor(): void {
+  if (DESTINO === 'aws') {
+    enApps('cd ~/infra/apps && sudo docker compose stop ms-notify');
+    return;
+  }
+  // En local no hay contenedor: se mata el proceso de Maven.
+  try {
+    execSync("pkill -f 'ms-pedidos360-notify'", { stdio: 'ignore' });
+  } catch {
+    // pkill devuelve 1 si no encontro nada; no es un error aqui.
+  }
+}
+
+/** Lo vuelve a levantar. En local tarda unos quince segundos en reconectar. */
+export function levantarConsumidor(): void {
+  if (DESTINO === 'aws') {
+    enApps('cd ~/infra/apps && sudo docker compose up -d ms-notify');
+    return;
+  }
+  const { spawn } = require('node:child_process');
+  const hijo = spawn('mvn', ['spring-boot:run', '-Dspring-boot.run.profiles=dev'], {
+    cwd: join(raizProyecto, 'ms-pedidos360-notify'),
+    detached: true, stdio: 'ignore',
+  });
+  hijo.unref();
+}
+
+/**
+ * Suspende el consumidor sin cerrar su conexion AMQP: los mensajes se acumulan
+ * a la vista pero el consumidor sigue figurando conectado. Al reanudar consume
+ * de inmediato, sin esperar un arranque.
+ */
+export function pausarConsumidor(): void {
+  if (DESTINO === 'aws') {
+    enApps('cd ~/infra/apps && sudo docker compose pause ms-notify');
+    return;
+  }
+  try { execSync("pkill -STOP -f 'ms-pedidos360-notify'", { stdio: 'ignore' }); } catch { /* ya estaba */ }
+}
+
+export function reanudarConsumidor(): void {
+  if (DESTINO === 'aws') {
+    try { enApps('cd ~/infra/apps && sudo docker compose unpause ms-notify'); } catch { /* ya estaba */ }
+    return;
+  }
+  try { execSync("pkill -CONT -f 'ms-pedidos360-notify'", { stdio: 'ignore' }); } catch { /* ya estaba */ }
+}

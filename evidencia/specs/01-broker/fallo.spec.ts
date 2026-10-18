@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
-import { CONSOLA, enApps, mensajesEn, vaciar, Marcador } from '../entorno';
+import { CONSOLA, mensajesEn, vaciar, Marcador,
+         detenerConsumidor, levantarConsumidor } from '../entorno';
 
 /**
  * Evidencia 2: que pasa cuando se cae un consumidor.
@@ -38,7 +39,7 @@ test.describe('Caida de un consumidor', () => {
   test.afterAll(() => {
     // Dejar el sistema como estaba, pase lo que pase con la prueba.
     try {
-      enApps('cd ~/infra/apps && sudo docker compose up -d ms-notify');
+      levantarConsumidor();
     } catch { /* el reporte de la prueba ya dice que fallo */ }
   });
 
@@ -59,7 +60,7 @@ test.describe('Caida de un consumidor', () => {
 
     // 2. Se cae el consumidor.
     marcas.marcar('caida');
-    enApps('cd ~/infra/apps && sudo docker compose stop ms-notify');
+    detenerConsumidor();
     await page.waitForTimeout(8000);
     await page.reload();
     await page.waitForTimeout(3000);

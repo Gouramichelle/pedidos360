@@ -5,73 +5,123 @@
     "dur": 22.453696
   },
   {
-    "id": "app",
+    "id": "app-login",
     "inicio": 22.453696,
-    "dur": 57.376871
+    "dur": 29.466485
+  },
+  {
+    "id": "app-redirect",
+    "inicio": 51.920181,
+    "dur": 15.337822999999998
+  },
+  {
+    "id": "app-roles",
+    "inicio": 67.258004,
+    "dur": 16.393061
+  },
+  {
+    "id": "app-catalogo",
+    "inicio": 83.651065,
+    "dur": 15.569341999999999
+  },
+  {
+    "id": "app-formulario",
+    "inicio": 99.220407,
+    "dur": 20.028254
+  },
+  {
+    "id": "app-creado",
+    "inicio": 119.248661,
+    "dur": 13.568344999999999
   },
   {
     "id": "consumidores",
-    "inicio": 79.830567,
-    "dur": 36.72
+    "inicio": 132.817006,
+    "dur": 35.16
   },
   {
     "id": "paralelo",
-    "inicio": 116.550567,
+    "inicio": 167.977006,
     "dur": 78.55415
   },
   {
     "id": "cfg-1-yml",
-    "inicio": 195.104717,
+    "inicio": 246.531156,
     "dur": 27.702403999999998
   },
   {
     "id": "cfg-2-cola",
-    "inicio": 222.807121,
+    "inicio": 274.23356,
     "dur": 31.196281
   },
   {
     "id": "cfg-3-dlq",
-    "inicio": 254.003402,
+    "inicio": 305.429841,
     "dur": 28.281451
   },
   {
     "id": "cfg-4-bindings",
-    "inicio": 282.284853,
+    "inicio": 333.711292,
     "dur": 25.538594
   },
   {
     "id": "cluster",
-    "inicio": 307.823447,
+    "inicio": 359.249886,
     "dur": 16.841905
   },
   {
     "id": "colas",
-    "inicio": 324.665352,
+    "inicio": 376.091791,
     "dur": 22.24576
   },
   {
     "id": "exchanges",
-    "inicio": 346.911112,
+    "inicio": 398.337551,
     "dur": 32.717279
   },
   {
     "id": "retencion",
-    "inicio": 379.628391,
+    "inicio": 431.05483000000004,
     "dur": 23.789161
   },
   {
     "id": "dlq-caminos",
-    "inicio": 403.417552,
+    "inicio": 454.843991,
     "dur": 50.434785000000005
   },
   {
-    "id": "fallo",
-    "inicio": 453.85233700000003,
-    "dur": 94.0
+    "id": "fallo-partida",
+    "inicio": 505.278776,
+    "dur": 13.665941
+  },
+  {
+    "id": "fallo-caida",
+    "inicio": 518.944717,
+    "dur": 11.74
+  },
+  {
+    "id": "fallo-publicar",
+    "inicio": 530.684717,
+    "dur": 16.423991
+  },
+  {
+    "id": "fallo-espera",
+    "inicio": 547.108708,
+    "dur": 30.680999999999997
+  },
+  {
+    "id": "fallo-vencido",
+    "inicio": 577.789708,
+    "dur": 14.837867999999999
+  },
+  {
+    "id": "fallo-motivo",
+    "inicio": 592.627576,
+    "dur": 20.607982
   },
   {
     "id": "cierre",
-    "inicio": 547.852337,
+    "inicio": 613.235558,
     "dur": 23.533559999999998
   }
 ]

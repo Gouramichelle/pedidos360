@@ -1,26 +1,30 @@
 [
   {
     "paso": "login",
-    "segundo": 0
+    "segundo": 2.756
+  },
+  {
+    "paso": "redirect",
+    "segundo": 13.76
   },
   {
     "paso": "roles",
-    "segundo": 10.674
+    "segundo": 18.45
   },
   {
     "paso": "catalogo",
-    "segundo": 14.69
+    "segundo": 27.474
   },
   {
     "paso": "formulario",
-    "segundo": 25.967
+    "segundo": 38.77
   },
   {
     "paso": "confirmar",
-    "segundo": 37.813
+    "segundo": 50.608
   },
   {
     "paso": "fin",
-    "segundo": 50.44
+    "segundo": 63.229
   }
 ]

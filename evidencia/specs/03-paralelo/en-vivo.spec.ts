@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 
-import { enApps, mensajesEn } from '../entorno';
+import { mensajesEn, pausarConsumidor, reanudarConsumidor, URL_APP } from '../entorno';
 
 /**
  * Evidencia 4: la app y la consola del broker, en paralelo.
@@ -23,7 +23,7 @@ import { enApps, mensajesEn } from '../entorno';
  * y los mensajes venceran antes de poder mostrar como se procesan.
  */
 
-const APP = 'https://3.83.237.65:8085';
+const APP = URL_APP;
 const CONSOLA = 'http://localhost:15672';
 
 async function iniciarSesionConsola(page: Page): Promise<void> {
@@ -111,7 +111,7 @@ test.describe('La app y el broker al mismo tiempo', () => {
 
     // Se pausa el consumidor justo antes de confirmar, para que los mensajes
     // se queden a la vista en vez de procesarse al instante.
-    enApps('cd ~/infra/apps && sudo docker compose pause ms-notify');
+    pausarConsumidor();
     marcas.pausa = Date.now() - tConsola;
     // Un refresco de consola alcanza: pausar no cambia nada en pantalla, el
     // consumidor sigue figurando conectado porque la conexion AMQP no se cierra.
@@ -140,7 +140,7 @@ test.describe('La app y el broker al mismo tiempo', () => {
     await consola.waitForTimeout(9000);
 
     // Y al reanudar el consumidor, se vacian.
-    enApps('cd ~/infra/apps && sudo docker compose unpause ms-notify');
+    reanudarConsumidor();
     marcas.reanudacion = Date.now() - tConsola;
     await consola.waitForTimeout(16000);
 

@@ -1,0 +1,30 @@
+[
+  {
+    "paso": "partida",
+    "segundo": 2.538
+  },
+  {
+    "paso": "caida",
+    "segundo": 8.656
+  },
+  {
+    "paso": "publicar",
+    "segundo": 20.396
+  },
+  {
+    "paso": "espera",
+    "segundo": 31.094
+  },
+  {
+    "paso": "vencido",
+    "segundo": 61.775
+  },
+  {
+    "paso": "motivo",
+    "segundo": 67.884
+  },
+  {
+    "paso": "fin",
+    "segundo": 83.255
+  }
+]
