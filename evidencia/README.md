@@ -1,102 +1,76 @@
 # Evidencia en video
 
-Graba automaticamente el recorrido que hay que demostrar en EP3 y EP4, contra
-el despliegue real en AWS. La idea es poder reproducirlo narrado en vez de
-hacerlo en vivo, donde cualquier cosa puede fallar.
-
-El guion de lo que se dice en cada momento esta en **[GUION.md](GUION.md)**.
+Graba el recorrido completo de la demostracion contra el despliegue real y lo
+arma en **un solo video narrado**, con voz en español explicando cada cosa como
+si uno se la estuviera presentando al docente.
 
 ## El entregable
 
-**`entregables/pedidos360-demostracion.mp4`** — 5 min 46 s.
+**`entregables/pedidos360-demostracion.mp4`**
 
-Un solo video con todo el recorrido, con tarjetas de transicion que anuncian
-cada tramo. Se puede dejar correr de principio a fin mientras se narra; el
-guion con las marcas de tiempo esta en [GUION.md](GUION.md).
+Incluye, en orden: la aplicacion con login OAuth 2.0 / OpenID Connect, los
+consumidores reaccionando a los eventos, la aplicacion y el broker corriendo en
+paralelo, **como esta construida cada cola y cada cola muerta en el codigo**,
+el cluster de dos nodos, las seis colas, los dos tipos de exchange, las
+politicas de retencion, **los dos caminos hacia la cola muerta**, y la caida de
+un consumidor de punta a punta.
 
-Se arma con:
-
-```bash
-node montaje/tarjetas.mjs   # tarjetas de transicion, renderizadas con el navegador
-./montaje/montar.sh         # normaliza todo a H.264 y lo une
-```
-
-Las tarjetas se renderizan como HTML y se capturan con Playwright, no con
-ffmpeg: este ffmpeg viene sin freetype y no tiene el filtro `drawtext`.
-
-## Los siete clips que lo componen
-
-| Archivo | Duracion | Que demuestra |
-|---|---|---|
-| `1-cluster-dos-nodos` | 15 s | Los dos nodos integrados en un cluster |
-| `2-seis-colas-y-sus-dlq` | 14 s | Tres colas de comando y sus tres DLQ |
-| `3-exchanges-direct-y-topic` | 12 s | Los dos tipos de exchange, mas el de dead-lettering |
-| `4-politicas-de-retencion` | 14 s | TTL, dead-lettering y tope de las colas muertas |
-| `5-caida-de-consumidor` | 94 s | El escenario de fallo completo, con `x-death: expired` |
-| `6-login-catalogo-y-pedido` | 49 s | OAuth 2.0/OIDC, catalogo real y creacion de un pedido |
-| `7-auditoria-y-reportes` | 36 s | Los consumidores reaccionando al evento |
-| `8-app-y-broker-en-paralelo` | 79 s | La app y la consola del broker **al mismo tiempo** |
-
-Total: 303 segundos de grabacion, mas 43 de tarjetas y portada.
-Con la narracion la presentacion queda entre 9 y 11 minutos.
-
-El tramo en paralelo se graba con dos contextos de navegador a la vez, cada uno
-con su propio video, y despues se componen lado a lado con
-`montaje/montar-paralelo.sh`. Ese script **mide el desfase en cada corrida** y
-lo compensa: los dos videos terminan juntos, asi que si uno dura mas es porque
-arranco antes, y esa diferencia es exactamente lo que hay que anteponerle al
-otro. Apilarlos desde el cero de cada archivo los desincroniza. Es el que
-demuestra que la conexion es real: una accion en la aplicacion y su efecto en
-el broker, en el mismo instante.
-
-## Como volver a grabarlos
-
-Hace falta el despliegue arriba y el tunel SSH a la consola del broker:
+## Como se arma
 
 ```bash
-ssh -i ~/Downloads/labsuser.pem -L 15672:localhost:15672 -L 15673:localhost:15673 \
-    ec2-user@<ip-publica-de-ec2-broker>
+./rehacer-todo.sh
 ```
 
-Y la sesion de Azure AD guardada. El login lo hace una persona, una sola vez:
+Encadena todo: graba los clips, compone el tramo en paralelo, genera las
+laminas de codigo, sintetiza la voz y ensambla el video.
 
-```bash
-npm install
-npm run sesion      # entrar con la cuenta y CERRAR el navegador
+Requisitos: sesion del Learner Lab activa, el tunel SSH al broker abierto, y la
+sesion de Azure guardada con `npm run sesion`.
+
+## Por que la narracion manda sobre el ritmo
+
+`montaje/ensamblar.py` genera primero la voz de cada tramo, mide cuanto dura, y
+**recien entonces** construye el video de ese tramo con esa duracion. Si la
+narracion es mas larga que la grabacion, el clip se ralentiza; si es mas corta,
+la voz queda con silencio al final. Asi ninguna explicacion queda cortada ni
+una imagen se va antes de terminar de hablar de ella.
+
+## Por que los tramos se anclan a marcas
+
+Un clip largo no se narra de un tiron: se parte en sub-tramos, y cada uno
+apunta a un pedazo concreto del video. Pero los cortes **no se escriben a
+mano**: las propias pruebas anotan en `montaje/marcas/` el segundo exacto en
+que ocurre cada paso mientras graban, y la narracion los referencia por nombre.
+
+```python
+dict(id='app-catalogo', kind='clip', src='...',
+     marcas='app', desde='catalogo', hasta='formulario', texto="""...""")
 ```
 
-Playwright no escribe contraseñas. Lo que guarda son las cookies de SSO de
-Azure AD, y con eso el redirect de OAuth vuelve ya autenticado. El video igual
-muestra el redirect completo, que es justamente lo que hay que demostrar.
+Sin esto hay que adivinar donde empieza cada escena, y el sintoma es que la voz
+habla de algo que ya salio de pantalla. Paso, y asi se corrigio.
 
-Despues:
+## Archivos
 
-```bash
-npm run grabar      # los siete
-./renombrar.sh      # los copia a entregables/ con nombres ordenables
-```
-
-O por partes: `npm run grabar:broker` y `npm run grabar:app`.
-
-## Lo que NO graba Playwright
-
-Dos tramos necesitan tu sesion autenticada y hay que mostrarlos en vivo o
-grabarlos con captura de pantalla:
-
-- **La consola de AWS**: la instancia del API Manager, sus rutas y las dos
-  instancias EC2
-- **El portal de Azure**: el tenant y los usuarios registrados
-
-El guion incluye el recorrido y la narracion de los dos.
-
-## Si cambia la IP de la sesion del lab
-
-La URL de la app esta fija en dos lugares: el script `sesion` de
-`package.json` y la constante `APP` de `specs/02-app/flujo.spec.ts`. Al
-reiniciar el lab hay que actualizar ambas, ademas del redirect URI en Azure.
+| Archivo | Para que |
+|---|---|
+| `rehacer-todo.sh` | Rehace todo de una sola vez |
+| `montaje/narracion.py` | El guion: que se ve y que se dice en cada tramo |
+| `montaje/ensamblar.py` | Genera la voz y arma el video |
+| `montaje/laminas.mjs` | Laminas de codigo de los tramos explicativos |
+| `montaje/tarjetas.mjs` | Portada y cierre |
+| `montaje/montar-paralelo.sh` | Compone la app y la consola lado a lado |
+| `renombrar.sh` | Nombra los clips grabados |
+| `specs/` | Las grabaciones, con sus marcas de tiempo |
 
 ## Hacerlo a mano
 
-Si el docente pide reproducirlo en vivo, el recorrido completo esta en
-**[PASO-A-PASO.md](PASO-A-PASO.md)**: como abrir el tunel a la consola del
-broker, donde mirar cada cosa, y como demostrar la caida de un consumidor.
+Si el docente pide reproducirlo en vivo, el recorrido esta en
+**[PASO-A-PASO.md](PASO-A-PASO.md)**. El texto completo de la narracion, para
+estudiar, esta en `montaje/narracion.py`.
+
+## Si cambia la IP de la sesion del lab
+
+La URL del despliegue esta fija en tres lugares: el script `sesion` de
+`package.json`, y la constante `APP` de `specs/02-app/flujo.spec.ts` y
+`specs/03-paralelo/en-vivo.spec.ts`.

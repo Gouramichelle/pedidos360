@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+ *{margin:0;padding:0;box-sizing:border-box}
+ body{width:1280px;height:720px;background:#0f1115;color:#e8eaed;padding:44px 56px;
+      font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+ h1{font-size:34px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px}
+ .pie{font-size:17px;color:#767d89;font-family:"SF Mono",Menlo,monospace;margin-bottom:26px}
+ pre{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:19px;line-height:1.52}
+ pre div{padding:1px 10px;border-radius:4px}
+ pre div.hl{background:rgba(255,140,66,.16);box-shadow:inset 3px 0 0 #ff8c42}
+ n{color:#4c535f;display:inline-block;width:38px;user-select:none}
+ k{color:#ff8c42}  txt{color:#9ece6a}  i{color:#5f6672;font-style:normal}  a{color:#7aa2f7}
+</style></head><body>
+ <h1>Y asi su cola muerta</h1><div class="pie">config/RabbitTopologyConfig.java</div><pre><div><n> 1</n><k>private</k> <k>Queue</k> dlqDeFlujo(<k>String</k> flujo) {</div><div><n> 2</n>    <k>return</k> QueueBuilder.durable(mensajeria.flujo(flujo).dlq())</div><div><n> 3</n>&nbsp;</div><div><n> 4</n>            <i>// Retencion: la evidencia se guarda 14 dias</i></div><div><n> 5</n>            .withArgument(<txt>&quot;x-message-ttl&quot;</txt>,</div><div><n> 6</n>                          mensajeria.retencion().ttlDlqMs())</div><div><n> 7</n>&nbsp;</div><div><n> 8</n>            <i>// Limpieza: tope de mensajes, para que una tormenta</i></div><div><n> 9</n>            <i>// de errores no llene el disco del nodo</i></div><div><n>10</n>            .withArgument(<txt>&quot;x-max-length&quot;</txt>,</div><div><n>11</n>                          mensajeria.retencion().maxMensajesDlq())</div><div><n>12</n>            .build();</div><div><n>13</n>}</div><div><n>14</n>&nbsp;</div><div><n>15</n><i>// Sin dead-lettering propio a proposito: lo que vence aqui</i></div><div class="hl"><n>16</n><i>// se descarta. Esa es la politica de limpieza.</i></div></pre>
+</body></html>

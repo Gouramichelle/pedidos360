@@ -42,3 +42,25 @@ export function vaciar(cola: string): void {
   execSync(`curl -s -u guest:guest -X DELETE "${CONSOLA}/api/queues/%2F/${cola}/contents"`,
     { encoding: 'utf8' });
 }
+
+/**
+ * Anota en que segundo de la grabacion ocurre cada paso.
+ *
+ * Sirve para cortar despues el clip en tramos y ponerle a cada uno su propia
+ * narracion. Sin esto hay que adivinar donde empieza cada escena, y la voz
+ * termina hablando de algo que ya no esta en pantalla.
+ */
+export class Marcador {
+  private readonly t0 = Date.now();
+  private readonly pasos: Array<{ paso: string; segundo: number }> = [];
+
+  marcar(paso: string): void {
+    this.pasos.push({ paso, segundo: (Date.now() - this.t0) / 1000 });
+  }
+
+  guardar(archivo: string): void {
+    const fs = require('node:fs');
+    fs.mkdirSync('montaje/marcas', { recursive: true });
+    fs.writeFileSync(`montaje/marcas/${archivo}.json`, JSON.stringify(this.pasos, null, 2));
+  }
+}

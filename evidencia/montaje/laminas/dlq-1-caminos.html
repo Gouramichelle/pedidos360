@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+ *{margin:0;padding:0;box-sizing:border-box}
+ body{width:1280px;height:720px;background:#0f1115;color:#e8eaed;padding:44px 56px;
+      font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+ h1{font-size:34px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px}
+ .pie{font-size:17px;color:#767d89;font-family:"SF Mono",Menlo,monospace;margin-bottom:26px}
+ pre{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:19px;line-height:1.52}
+ pre div{padding:1px 10px;border-radius:4px}
+ pre div.hl{background:rgba(255,140,66,.16);box-shadow:inset 3px 0 0 #ff8c42}
+ n{color:#4c535f;display:inline-block;width:38px;user-select:none}
+ k{color:#ff8c42}  txt{color:#9ece6a}  i{color:#5f6672;font-style:normal}  a{color:#7aa2f7}
+</style></head><body>
+ <h1>Dos caminos hacia la cola muerta</h1><div class="pie">El broker deja el motivo escrito en el header x-death de cada mensaje</div><pre><div><n> 1</n>  <a>rejected</a></div><div><n> 2</n>  ─────────────────────────────────────────────────────────</div><div><n> 3</n>  El consumidor esta arriba y RECHAZA el mensaje porque</div><div><n> 4</n>  viene mal formado: sin cliente, sin pedido, sin estado.</div><div><n> 5</n>&nbsp;</div><div><n> 6</n>  Lo decide el codigo, con un NACK sin requeue.</div><div><n> 7</n>  Reintentarlo daria exactamente el mismo resultado.</div><div><n> 8</n>&nbsp;</div><div><n> 9</n>&nbsp;</div><div><n>10</n>  <a>expired</a></div><div><n>11</n>  ─────────────────────────────────────────────────────────</div><div><n>12</n>  Nadie lo consumio dentro del TTL de la cola. Por ejemplo</div><div><n>13</n>  porque el consumidor esta caido.</div><div><n>14</n>&nbsp;</div><div><n>15</n>  Lo decide el broker, solo, sin que nadie intervenga.</div><div><n>16</n>  El mensaje estaba bien; falto quien lo atendiera.</div></pre>
+</body></html>

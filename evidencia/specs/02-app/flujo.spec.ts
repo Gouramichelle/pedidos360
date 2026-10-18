@@ -1,5 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 
+import { Marcador } from '../entorno';
+
 /**
  * Evidencia 3: el recorrido completo en la aplicacion desplegada.
  *
@@ -30,8 +32,12 @@ test.describe('Recorrido en la aplicacion desplegada', () => {
   test('login por OIDC, catalogo real y creacion de un pedido', async ({ page }) => {
     test.setTimeout(5 * 60 * 1000);
 
+    const marcas = new Marcador();
+    marcas.marcar('login');
+
     // 1. Login por OAuth 2.0 / OpenID Connect contra el tenant de Azure AD.
     await entrar(page);
+    marcas.marcar('roles');
     await expect(page.locator('text=gou.rodriguez@duocuc.cl').first()).toBeVisible();
     // Los roles del token se muestran en la cabecera: vienen del claim "roles".
     await expect(page.locator('text=Admin').first()).toBeVisible();
@@ -39,6 +45,7 @@ test.describe('Recorrido en la aplicacion desplegada', () => {
 
     // 2. El catalogo, con productos y precios reales servidos por ms-catalog
     //    a traves del API Gateway.
+    marcas.marcar('catalogo');
     await page.locator('a:has-text("Catalogo")').first().click();
     await page.waitForTimeout(4000);
     await expect(page.locator('text=Pizza Margarita').first()).toBeVisible();
@@ -48,6 +55,7 @@ test.describe('Recorrido en la aplicacion desplegada', () => {
     // 3. Crear un pedido. Esta sola accion publica los tres comandos.
     await page.locator('a:has-text("Pedidos")').first().click();
     await page.waitForTimeout(3000);
+    marcas.marcar('formulario');
     await page.locator('a:has-text("Nuevo pedido")').first().click();
     await page.waitForURL(/\/orders\/nuevo/, { timeout: 20000 });
     await page.waitForTimeout(2500);
@@ -69,12 +77,15 @@ test.describe('Recorrido en la aplicacion desplegada', () => {
 
     // El total lo calcula ms-orders leyendo el precio del catalogo, no el
     // frontend: el cliente solo manda productId y cantidad.
+    marcas.marcar('confirmar');
     await page.locator('button:has-text("Confirmar pedido")').click();
     await page.waitForTimeout(6000);
 
     // 4. El pedido queda listado con su identificador y su estado real.
     await expect(page.locator('text=CREADO').first()).toBeVisible({ timeout: 30000 });
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(6000);
+    marcas.marcar('fin');
+    marcas.guardar('app');
   });
 
   test('la auditoria y los reportes reflejan el pedido recien creado', async ({ page }) => {

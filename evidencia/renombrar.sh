@@ -4,7 +4,10 @@
 # reproducir en la presentacion siguiendo GUION.md.
 set -euo pipefail
 cd "$(dirname "$0")"
-rm -rf entregables && mkdir -p entregables
+# NO se borra entregables/: este script se corre despues de grabar un subconjunto
+# de clips, y vaciar la carpeta se llevaria por delante los que no se regrabaron.
+# Cada clip se sobrescribe solo si su grabacion existe.
+mkdir -p entregables
 
 # Se matchea el final del nombre, no el principio: todas las carpetas de un
 # mismo archivo .spec comparten prefijo y matchear por ahi las confunde.

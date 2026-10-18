@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { CONSOLA, enApps, mensajesEn, vaciar } from '../entorno';
+import { CONSOLA, enApps, mensajesEn, vaciar, Marcador } from '../entorno';
 
 /**
  * Evidencia 2: que pasa cuando se cae un consumidor.
@@ -48,7 +48,9 @@ test.describe('Caida de un consumidor', () => {
     // Partir de una DLQ vacia: si quedara un mensaje de una corrida anterior,
     // la asercion pasaria sin demostrar nada.
     vaciar(DLQ);
+    const marcas = new Marcador();
     await entrar(page);
+    marcas.marcar('partida');
 
     // 1. Punto de partida: la cola tiene su consumidor enganchado.
     await ir(page, `/queues/%2F/${COLA}`);
@@ -56,12 +58,14 @@ test.describe('Caida de un consumidor', () => {
     await page.waitForTimeout(3000);
 
     // 2. Se cae el consumidor.
+    marcas.marcar('caida');
     enApps('cd ~/infra/apps && sudo docker compose stop ms-notify');
     await page.waitForTimeout(8000);
     await page.reload();
     await page.waitForTimeout(3000);
 
     // 3. Se publica un comando valido desde la consola, por el exchange direct.
+    marcas.marcar('publicar');
     await ir(page, '/exchanges/%2F/cmd.direct');
     const publicar = page.locator('text=Publish message').first();
     await publicar.scrollIntoViewIfNeeded();
@@ -82,6 +86,7 @@ test.describe('Caida de un consumidor', () => {
     await page.waitForTimeout(3000);
 
     // 4. El mensaje queda encolado y nadie lo atiende.
+    marcas.marcar('espera');
     await ir(page, `/queues/%2F/${COLA}`);
     expect(mensajesEn(COLA)).toBeGreaterThan(0);
     await page.waitForTimeout(4000);
@@ -98,10 +103,12 @@ test.describe('Caida de un consumidor', () => {
     expect(mensajesEn(COLA)).toBe(0);
 
     // 6. El mensaje esta en la cola muerta.
+    marcas.marcar('vencido');
     await ir(page, `/queues/%2F/${DLQ}`);
     await page.waitForTimeout(3000);
 
     // 7. Y el broker dejo escrito el motivo.
+    marcas.marcar('motivo');
     const obtener = page.locator('h2:has-text("Get messages")').first();
     await obtener.scrollIntoViewIfNeeded();
     await obtener.click();
@@ -111,6 +118,8 @@ test.describe('Caida de un consumidor', () => {
     await page.waitForTimeout(4000);
 
     await expect(page.locator('text=expired').first()).toBeVisible({ timeout: 20000 });
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(8000);
+    marcas.marcar('fin');
+    marcas.guardar('fallo');
   });
 });

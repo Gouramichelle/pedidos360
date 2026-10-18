@@ -1,0 +1,26 @@
+[
+  {
+    "paso": "login",
+    "segundo": 0
+  },
+  {
+    "paso": "roles",
+    "segundo": 10.674
+  },
+  {
+    "paso": "catalogo",
+    "segundo": 14.69
+  },
+  {
+    "paso": "formulario",
+    "segundo": 25.967
+  },
+  {
+    "paso": "confirmar",
+    "segundo": 37.813
+  },
+  {
+    "paso": "fin",
+    "segundo": 50.44
+  }
+]

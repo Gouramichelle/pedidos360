@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+ *{margin:0;padding:0;box-sizing:border-box}
+ body{width:1280px;height:720px;background:#0f1115;color:#e8eaed;padding:44px 56px;
+      font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+ h1{font-size:34px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px}
+ .pie{font-size:17px;color:#767d89;font-family:"SF Mono",Menlo,monospace;margin-bottom:26px}
+ pre{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:19px;line-height:1.52}
+ pre div{padding:1px 10px;border-radius:4px}
+ pre div.hl{background:rgba(255,140,66,.16);box-shadow:inset 3px 0 0 #ff8c42}
+ n{color:#4c535f;display:inline-block;width:38px;user-select:none}
+ k{color:#ff8c42}  txt{color:#9ece6a}  i{color:#5f6672;font-style:normal}  a{color:#7aa2f7}
+</style></head><body>
+ <h1>La topologia se declara en el application.yml</h1><div class="pie">ms-pedidos360-orders/src/main/resources/application.yml</div><pre><div><n> 1</n><k>mensajeria</k>:</div><div><n> 2</n>  <k>exchanges</k>:</div><div><n> 3</n>    <k>direct</k>: cmd.direct</div><div><n> 4</n>    <k>topic</k>: cmd.topic</div><div><n> 5</n>    <k>dlx</k>: cmd.dead.dlx</div><div><n> 6</n>&nbsp;</div><div><n> 7</n>  <k>retencion</k>:</div><div class="hl"><n> 8</n>    <k>ttl-comando-ms</k>: 30000        <i># un comando sin consumir vence a los 30 s</i></div><div class="hl"><n> 9</n>    <k>ttl-dlq-ms</k>: 1209600000       <i># la cola muerta guarda 14 dias</i></div><div class="hl"><n>10</n>    <k>max-mensajes-dlq</k>: 1000       <i># y como mucho mil mensajes</i></div><div><n>11</n>&nbsp;</div><div><n>12</n>  <k>flujos</k>:</div><div><n>13</n>    <k>email</k>:</div><div><n>14</n>      <k>cola</k>: q.cmd.email</div><div><n>15</n>      <k>routing-key</k>: email.send</div><div><n>16</n>      <k>patron-topic</k>: email.*</div><div><n>17</n>    <k>kitchen</k>:</div><div><n>18</n>      <k>cola</k>: q.cmd.kitchen</div><div><n>19</n>      <k>routing-key</k>: kitchen.ticket</div><div><n>20</n>      <k>patron-topic</k>: kitchen.<i>#</i></div><div><n>21</n>    <k>invoice</k>:</div><div><n>22</n>      <k>cola</k>: q.cmd.invoice</div><div><n>23</n>      <k>routing-key</k>: invoice.gen</div><div><n>24</n>      <k>patron-topic</k>: invoice.*</div></pre>
+</body></html>
