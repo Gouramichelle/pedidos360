@@ -133,3 +133,25 @@ contenedor arranque si la instancia no tiene permisos sobre CloudWatch.
 | `desplegar.sh` | Copia el codigo, levanta el broker y los 6 servicios |
 | `actualizar-gateway.sh` | Reescribe la IP de las integraciones y el origen de CORS |
 | `verificar.sh` | Smoke test: health, 401 sin token, preflight, cluster y colas |
+
+## Dos trampas que ya costaron tiempo
+
+**No copiar `infra/apps/.env` a mano a la instancia.** `desplegar.sh` reescribe
+las tres lineas que dependen de la sesion del lab (`RABBITMQ_ADDRESSES`,
+`KAFKA_BOOTSTRAP_SERVERS`, `ALLOWED_ORIGINS`) con las IPs actuales. Un `scp`
+directo del archivo local pisa esos valores con los de una sesion anterior, y
+el sintoma es confuso: los servicios arrancan, responden a health en el puerto,
+pero el health global da 503 con `NoRouteToHostException` contra RabbitMQ. Si
+hay que cambiar una variable, cambiarla en el `.env` local y volver a correr
+`desplegar.sh`.
+
+**`AZURE_AUDIENCES` necesita las dos formas**, separadas por coma:
+
+```
+AZURE_AUDIENCES=api://<client-id>,<client-id>
+```
+
+Azure AD emite tokens v2 cuyo `aud` es el **GUID pelado**, no `api://<guid>`.
+Con una sola entrada el API Gateway acepta el token pero los microservicios lo
+rechazan al revalidarlo, y el frontend muestra "No se pudieron cargar los
+pedidos" con un 401 que parece del Gateway y no lo es.
