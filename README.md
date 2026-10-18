@@ -32,10 +32,9 @@ Navegador
                          │
          ┌───────────────┼────────────────┐
          ▼               ▼                ▼
-    RDS PostgreSQL   ec2-rabbit          ec2-kafka
-    (4 esquemas)     Cluster RabbitMQ    Kafka :9092 + Zookeeper
-                     rabbit1 :5672
-                     rabbit2 :5673
+    RDS PostgreSQL        ec2-broker
+    (4 esquemas)          Cluster RabbitMQ (rabbit1 :5672, rabbit2 :5673)
+                          Kafka :9092 + Zookeeper
 ```
 
 El navegador nunca habla directo con los microservicios: las llamadas a la API
@@ -55,9 +54,9 @@ todo vuelve a viajar por el mismo origen y CORS deja de intervenir.
 | 8084 | ms-audit | ec2-apps |
 | 8085 | Nginx: frontend (y proxy de la API como respaldo) | ec2-apps |
 | 8086 | ms-mqadmin (administracion de la topologia) | ec2-apps |
-| 5672 / 15672 | RabbitMQ nodo 1 y su consola | ec2-rabbit |
-| 5673 / 15673 | RabbitMQ nodo 2 y su consola | ec2-rabbit |
-| 9092 / 2181 | Kafka y Zookeeper | ec2-kafka |
+| 5672 / 15672 | RabbitMQ nodo 1 y su consola | ec2-broker |
+| 5673 / 15673 | RabbitMQ nodo 2 y su consola | ec2-broker |
+| 9092 / 2181 | Kafka y Zookeeper | ec2-broker |
 | 5432 | PostgreSQL | RDS |
 
 ---
@@ -174,12 +173,11 @@ Crear cinco Security Groups en **EC2 → Security Groups**. AWS reserva el prefi
 |---|---|
 | `seg-ssh` | SSH (22) desde *My IP* |
 | `seg-apps` | TCP 8080-8086 desde `0.0.0.0/0` |
-| `seg-rabbit` | TCP 5672, 5673, 15672 y 15673 desde `seg-apps` |
-| `seg-kafka` | TCP 9092 desde `seg-apps`, TCP 2181 desde si mismo |
+| `seg-broker` | TCP 5672, 5673, 15672, 15673 y 9092 desde `seg-apps` |
 | `seg-rds` | PostgreSQL (5432) desde `seg-apps` |
 
-`seg-kafka` se referencia a si mismo, asi que hay que crearlo primero con la
-regla de 9092 y agregar despues la de 2181.
+Zookeeper no necesita regla propia: Kafka lo alcanza por la red interna de
+Docker, dentro de la misma instancia.
 
 ## 3. Base de datos
 
@@ -199,19 +197,23 @@ los esquemas y las tablas al arrancar.
 
 ## 4. Instancias EC2
 
-Lanzar tres, todas con Amazon Linux 2023 y el key pair del laboratorio:
+Lanzar dos, ambas con Amazon Linux 2023 y el key pair del laboratorio:
 
 | Nombre | Tipo | Security groups |
 |---|---|---|
 | `ec2-apps` | `t3.medium` | `seg-ssh`, `seg-apps` |
-| `ec2-rabbit` | `t3.medium` | `seg-ssh`, `seg-rabbit` |
-| `ec2-kafka` | `t3.small` | `seg-ssh`, `seg-kafka` |
+| `ec2-broker` | `t3.medium` | `seg-ssh`, `seg-broker` |
 
 El tamano de `ec2-apps` importa: corre seis JVM mas Nginx, y con 2 GB de RAM el
 sistema entra en falta de memoria y las compilaciones lo dejan sin responder.
 
-RabbitMQ y Kafka van en instancias separadas porque el cluster de RabbitMQ son
-dos nodos, y los dos mas Kafka y Zookeeper no caben en una `t3.small`.
+RabbitMQ y Kafka comparten `ec2-broker`: los dos nodos del cluster mas Kafka y
+Zookeeper entran holgados en los 4 GB de una `t3.medium`, y cada instancia extra
+es una IP privada mas que verificar cada vez que expira la sesion del lab.
+
+**Todo esto se puede provisionar por CLI en vez de a mano.** Ver
+[infra/aws/README.md](infra/aws/README.md), que automatiza los security groups,
+las instancias, el despliegue y el reapuntado del API Gateway.
 
 En **Advanced details → User data** de ambas, para instalar Docker:
 
@@ -241,11 +243,11 @@ sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 ## 5. Mensajeria
 
-### 5.1 Cluster RabbitMQ en `ec2-rabbit`
+### 5.1 Cluster RabbitMQ en `ec2-broker`
 
 ```bash
-scp -i labsuser.pem -r infra/mq ec2-user@<ip-publica-rabbit>:~/
-ssh -i labsuser.pem ec2-user@<ip-publica-rabbit>
+scp -i labsuser.pem -r infra/mq ec2-user@<ip-publica-broker>:~/
+ssh -i labsuser.pem ec2-user@<ip-publica-broker>
 cd ~/mq
 cp .env.example .env
 sed -i "s/^RABBITMQ_ERLANG_COOKIE=.*/RABBITMQ_ERLANG_COOKIE=$(openssl rand -hex 32)/" .env
@@ -262,11 +264,11 @@ Verificar que el cluster se formo (tienen que aparecer los dos nodos):
 sudo docker exec mq-rabbit1-1 rabbitmq-diagnostics -q cluster_status
 ```
 
-### 5.2 Kafka en `ec2-kafka`
+### 5.2 Kafka en la misma `ec2-broker`
 
 ```bash
-scp -i labsuser.pem -r infra/kafka ec2-user@<ip-publica-kafka>:~/
-ssh -i labsuser.pem ec2-user@<ip-publica-kafka>
+scp -i labsuser.pem -r infra/kafka ec2-user@<ip-publica-broker>:~/
+ssh -i labsuser.pem ec2-user@<ip-publica-broker>
 cd ~/kafka && sudo docker compose up -d
 ```
 
@@ -302,10 +304,10 @@ DDL_AUTO=update
 
 # Los dos nodos del cluster, separados por coma. Spring los intenta en orden
 # y hace failover al segundo si el primero no responde.
-RABBITMQ_ADDRESSES=<ip-privada-de-ec2-rabbit>:5672,<ip-privada-de-ec2-rabbit>:5673
+RABBITMQ_ADDRESSES=<ip-privada-de-ec2-broker>:5672,<ip-privada-de-ec2-broker>:5673
 RABBITMQ_USER=guest
 RABBITMQ_PASSWORD=guest
-KAFKA_BOOTSTRAP_SERVERS=<ip-privada-de-ec2-kafka>:9092
+KAFKA_BOOTSTRAP_SERVERS=<ip-privada-de-ec2-broker>:9092
 
 AZURE_ISSUER_URI=https://login.microsoftonline.com/<tenant-id>/v2.0
 AZURE_AUDIENCES=api://<client-id>,<client-id>
@@ -701,11 +703,11 @@ los dos nodos con su memoria y disco, y **Queues** la profundidad de cada cola,
 su tasa de entrada y salida y los consumidores enganchados. Es donde se ve en
 vivo que una cola se llena cuando su consumidor se cae.
 
-En la nube no esta expuesta al navegador (`seg-rabbit` solo acepta trafico
+En la nube no esta expuesta al navegador (`seg-broker` solo acepta trafico
 desde `seg-apps`), asi que se abre por tunel SSH:
 
 ```bash
-ssh -i labsuser.pem -L 15672:localhost:15672 -L 15673:localhost:15673 ec2-user@<ip-publica-rabbit>
+ssh -i labsuser.pem -L 15672:localhost:15672 -L 15673:localhost:15673 ec2-user@<ip-publica-broker>
 ```
 
 Los logs de los contenedores pueden ademas enviarse a **CloudWatch Logs**, para

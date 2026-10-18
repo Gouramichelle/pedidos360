@@ -5,3 +5,4 @@
 # Volumenes de docker-compose corridos localmente
 volumes/
 *.log
+entorno-actual.env

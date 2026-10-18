@@ -7,10 +7,9 @@ Este es el orden exacto para dejar todo operativo de nuevo.
 ## 1. Arrancar el lab y las instancias
 
 1. Canvas → Learner Lab → **Start Lab**, esperar el punto verde.
-2. **EC2 → Instances**: si `ec2-apps`, `ec2-rabbit` o `ec2-kafka` están
-   *stopped*, iniciarlas.
+2. **EC2 → Instances**: si `ec2-apps` o `ec2-broker` están *stopped*, iniciarlas.
 3. Anotar la **IP pública nueva de `ec2-apps`** y verificar que las **IPs
-   privadas de `ec2-rabbit` y `ec2-kafka`** no hayan cambiado.
+   privada de `ec2-broker`** no hayan cambiado.
 4. Descargar de nuevo el `labsuser.pem` desde el panel del lab.
 5. Si SSH da *timeout* pero `https://<IP>:8085` responde, cambió tu IP pública:
    **EC2 → Security Groups → `seg-ssh` → Edit inbound rules**, en la regla SSH
@@ -34,11 +33,11 @@ Si apareciera un solo nodo en *Running Nodes*, arrancar el que falte con
 Solo en ese caso, actualizar en `~/infra/apps/.env` de `ec2-apps`:
 
 ```
-RABBITMQ_ADDRESSES=<ip-privada-rabbit>:5672,<ip-privada-rabbit>:5673
-KAFKA_BOOTSTRAP_SERVERS=<ip-privada-kafka>:9092
+RABBITMQ_ADDRESSES=<ip-privada-broker>:5672,<ip-privada-broker>:5673
+KAFKA_BOOTSTRAP_SERVERS=<ip-privada-broker>:9092
 ```
 
-y en `~/kafka/docker-compose.yml` de `ec2-kafka` el valor de
+y en `~/kafka/docker-compose.yml` de `ec2-broker` el valor de
 `KAFKA_ADVERTISED_HOST`. Después `docker compose up -d` en cada una.
 
 ## 3. Actualizar la IP pública de `ec2-apps` (siempre)
@@ -106,7 +105,7 @@ completo. Si el lab no permite asignarla, seguir con el checklist normal.
 - Client ID: `d0120ca1-1d51-493b-9eaa-1121b5b7303a`
 - Invoke URL del Gateway: `https://7x6u8dfoh0.execute-api.us-east-1.amazonaws.com`
 - Endpoint de RDS y sus credenciales
-- IPs privadas de `ec2-rabbit` y `ec2-kafka`
+- IPs privada de `ec2-broker`
 
 ## Configuración crítica que costó encontrar (no tocar)
 
@@ -129,12 +128,12 @@ completo. Si el lab no permite asignarla, seguir con el checklist normal.
 
 ## Consola de RabbitMQ para la demo
 
-`seg-rabbit` solo acepta tráfico desde `seg-apps`, así que las consolas no son
+`seg-broker` solo acepta tráfico desde `seg-apps`, así que las consolas no son
 alcanzables desde el navegador. Para mostrarlas en la presentación, abrir un
 túnel SSH en vez de exponer los puertos:
 
 ```bash
-ssh -i labsuser.pem -L 15672:localhost:15672 -L 15673:localhost:15673 ec2-user@<ip-publica-rabbit>
+ssh -i labsuser.pem -L 15672:localhost:15672 -L 15673:localhost:15673 ec2-user@<ip-publica-broker>
 ```
 
 Después, `http://localhost:15672` muestra el nodo 1 y `http://localhost:15673`

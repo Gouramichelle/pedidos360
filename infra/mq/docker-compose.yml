@@ -1,4 +1,4 @@
-# Cluster RabbitMQ de dos nodos, para ec2-rabbit.
+# Cluster RabbitMQ de dos nodos, para ec2-broker.
 #
 # Los dos nodos corren como contenedores en el mismo host y se descubren por
 # la red interna de Docker. Eso deja todo el trafico entre nodos (epmd 4369 e
