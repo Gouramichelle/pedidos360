@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { CONSOLA, mensajesEn, vaciar, Marcador,
+import { CONSOLA, mensajesEn, consumidoresEn, vaciar, Marcador,
          detenerConsumidor, levantarConsumidor } from '../entorno';
 
 /**
@@ -56,12 +56,18 @@ test.describe('Caida de un consumidor', () => {
     // 1. Punto de partida: la cola tiene su consumidor enganchado.
     await ir(page, `/queues/%2F/${COLA}`);
     await expect(page.locator('text=Consumers').first()).toBeVisible();
+    // La narracion afirma que la cola arranca con su consumidor enganchado.
+    // Se comprueba contra la API: si no fuera cierto, el video no serviria de
+    // evidencia y conviene que falle aca.
+    expect(consumidoresEn(COLA), 'la cola deberia tener su consumidor').toBeGreaterThan(0);
     await page.waitForTimeout(3000);
 
     // 2. Se cae el consumidor.
     marcas.marcar('caida');
     detenerConsumidor();
     await page.waitForTimeout(8000);
+    // Y que al bajarlo los consumidores pasan a cero, que es lo que se narra.
+    expect(consumidoresEn(COLA), 'sin consumidor, la cola deberia quedar en cero').toBe(0);
     await page.reload();
     await page.waitForTimeout(3000);
 

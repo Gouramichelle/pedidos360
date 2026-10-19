@@ -89,31 +89,53 @@ TRAMOS = [
         microservicio de pedidos no cambia ni una linea de codigo.
     """),
 
-    dict(id='paralelo', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4', texto="""
+    dict(id='paralelo-inicio', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4',
+         marcas='paralelo', desde='inicio', hasta='pausa', texto="""
         Ahora quiero demostrar que la conexion entre la aplicacion y el broker
         es real. A la izquierda la aplicacion, a la derecha la consola de
-        RabbitMQ. Son dos navegadores distintos corriendo al mismo tiempo contra
-        el mismo despliegue.
-        Miren la derecha antes de que pase nada: las seis colas en cero. Esto
-        hay que verlo, porque si no, lo que viene despues no probaria nada.
+        RabbitMQ: dos navegadores distintos, corriendo al mismo tiempo contra el
+        mismo despliegue.
+        Miren la derecha antes de que pase nada: las seis colas en cero.
+    """),
+
+    dict(id='paralelo-pausa', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4',
+         marcas='paralelo', desde='pausa', hasta='confirmacion', texto="""
         Antes de confirmar el pedido voy a pausar el consumidor, y conviene que
-        explique por que. Con los tres consumidores andando, un mensaje se
-        publica y se procesa en milisegundos. La consola muestrea cada cinco
-        segundos: cuando refresca ya no queda nada, y el contador se queda en
-        cero. Pausando el consumidor, el mensaje se queda a la vista. Es el
-        mismo trafico; solo lo estoy haciendo visible.
+        explique por que, porque no es para disimular nada.
+        Con los tres consumidores andando, un mensaje se publica y se procesa en
+        milisegundos. La consola muestrea cada cinco segundos: cuando refresca,
+        el mensaje ya se consumio y el contador sigue en cero. Parece que no
+        paso nada, cuando en realidad paso todo.
+        Pausando el consumidor, el mensaje se queda a la vista. Es exactamente
+        el mismo trafico; lo unico que hago es hacerlo visible.
+        Fijense que el consumidor sigue figurando conectado: pausar no cierra la
+        conexion, solo suspende el proceso.
+    """),
+
+    dict(id='paralelo-mensajes', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4',
+         marcas='paralelo', desde='confirmacion', hasta='reanudacion', texto="""
         Confirmo el pedido. Y miren la derecha: las tres colas de comando pasan
-        a tener un mensaje. Correo, cocina y facturacion. Una sola accion del
-        usuario, tres comandos.
+        a tener un mensaje cada una. Correo, cocina y facturacion. Una sola
+        accion del usuario, tres comandos publicados.
         Fijense ademas en que columna estan: Unacked, no Ready. Eso significa
-        que el consumidor ya los recibio pero todavia no los confirmo. Es el
-        modo de confirmacion manual.
-        Y si dudan de que los dos lados sean el mismo instante, estan los
+        que el consumidor ya los recibio, pero todavia no los confirmo. Es el
+        modo de confirmacion manual funcionando a la vista: el mensaje no se da
+        por procesado hasta que el codigo lo confirma explicitamente.
+        Y si dudan de que los dos lados sean el mismo instante, ahi estan los
         relojes: el pedido dice creado a una hora, y la consola refrescada unos
-        segundos despues. Son dos relojes reales.
-        Ahora reanudo el consumidor, y las tres colas vuelven a cero: los
-        proceso y los confirmo. Ese es el ciclo completo, visto desde los dos
-        lados a la vez.
+        segundos despues. Son dos relojes reales, de dos navegadores distintos.
+    """),
+
+    dict(id='paralelo-drenaje', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4',
+         marcas='paralelo', desde='reanudacion', hasta='fin', texto="""
+        Ahora reanudo el consumidor. Y las tres colas vuelven a cero: los tres
+        mensajes se procesaron y se confirmaron.
+        Ese es el ciclo completo visto desde los dos lados a la vez. La
+        aplicacion publico, las colas los retuvieron mientras no hubo quien los
+        atendiera, y el consumidor los proceso en cuanto volvio.
+        Y noten que ninguno fue a parar a una cola muerta: se consumieron dentro
+        del tiempo de vida. En un rato vamos a ver que pasa cuando no llegan a
+        tiempo.
     """),
 
     dict(id='cfg-1-yml', kind='imagen', src='montaje/laminas/png/cfg-1-yml.png', texto="""
@@ -164,7 +186,8 @@ TRAMOS = [
         cualquier otra.
     """),
 
-    dict(id='cluster', kind='clip', src='entregables/1-cluster-dos-nodos.webm', texto="""
+    dict(id='cluster', kind='clip', src='entregables/1-cluster-dos-nodos.webm',
+         marcas='cluster-nodos', desde='listo', texto="""
         Pasemos a la infraestructura. Este es el cluster de RabbitMQ: dos nodos,
         rabbit uno y rabbit dos, integrados en un mismo cluster y levantados con
         docker compose en la instancia del broker.
@@ -172,7 +195,8 @@ TRAMOS = [
         Spring hace failover al segundo.
     """),
 
-    dict(id='colas', kind='clip', src='entregables/2-seis-colas-y-sus-dlq.webm', texto="""
+    dict(id='colas', kind='clip', src='entregables/2-seis-colas-y-sus-dlq.webm',
+         marcas='cluster-colas', desde='listo', texto="""
         Aca estan las seis colas que acabamos de ver declaradas. Tres de
         comando: correo, cocina y facturacion. Y la cola muerta de cada una, que
         es su respaldo cuando un mensaje no se puede entregar.
@@ -181,7 +205,8 @@ TRAMOS = [
         cero, porque nadie consume de ellas: se revisan a mano.
     """),
 
-    dict(id='exchanges', kind='clip', src='entregables/3-exchanges-direct-y-topic.webm', texto="""
+    dict(id='exchanges', kind='clip', src='entregables/3-exchanges-direct-y-topic.webm',
+         marcas='cluster-exchanges', desde='listo', texto="""
         Estos son los exchanges. Tenemos los dos tipos que pide la pauta, y cada
         uno resuelve un caso distinto.
         El direct enruta por clave exacta. Lo usa el ticket de cocina, que tiene
@@ -194,7 +219,8 @@ TRAMOS = [
         es a donde el broker enruta lo que no se pudo entregar.
     """),
 
-    dict(id='retencion', kind='clip', src='entregables/4-politicas-de-retencion.webm', texto="""
+    dict(id='retencion', kind='clip', src='entregables/4-politicas-de-retencion.webm',
+         marcas='cluster-retencion', desde='listo', texto="""
         Y aca se ven aplicados, sobre una cola real, los argumentos que vimos en
         el codigo. El dead letter exchange, su clave de enrutamiento, y el
         tiempo de vida del mensaje en treinta mil milisegundos, o sea treinta

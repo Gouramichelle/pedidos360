@@ -1,5 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 
+import { Marcador } from '../entorno';
+
 /**
  * Evidencia 1: el cluster de RabbitMQ, sus colas y sus exchanges.
  *
@@ -39,8 +41,20 @@ async function ir(page: Page, hash: string) {
   await page.waitForTimeout(2500);
 }
 
+/**
+ * Cada prueba anota cuando su contenido quedo a la vista.
+ *
+ * El video arranca cuando se crea la pagina, asi que incluye el formulario de
+ * login de la consola y la navegacion. Si la narracion empezara ahi, hablaria
+ * de los nodos del cluster mientras en pantalla todavia hay un formulario.
+ * Marcando el momento en que el contenido esta listo, el tramo narrado empieza
+ * donde corresponde.
+ */
 test.describe('Cluster de RabbitMQ', () => {
+  let marcas: Marcador;
+
   test.beforeEach(async ({ page }) => {
+    marcas = new Marcador();
     await entrar(page);
   });
 
@@ -52,6 +66,9 @@ test.describe('Cluster de RabbitMQ', () => {
 
     await expect(page.locator('text=rabbit@rabbit1').first()).toBeVisible();
     await expect(page.locator('text=rabbit@rabbit2').first()).toBeVisible();
+    marcas.marcar('listo');
+    await page.waitForTimeout(6000);
+    marcas.guardar('cluster-nodos');
   });
 
   test('existen las seis colas: tres de comando y sus tres DLQ', async ({ page }) => {
@@ -64,7 +81,9 @@ test.describe('Cluster de RabbitMQ', () => {
     ]) {
       await expect(page.locator(`text=${cola}`).first()).toBeVisible();
     }
-    await page.waitForTimeout(3000);
+    marcas.marcar('listo');
+    await page.waitForTimeout(7000);
+    marcas.guardar('cluster-colas');
   });
 
   test('hay un exchange direct y uno topic, mas el de dead-lettering', async ({ page }) => {
@@ -73,7 +92,9 @@ test.describe('Cluster de RabbitMQ', () => {
     await expect(page.locator('text=cmd.direct').first()).toBeVisible();
     await expect(page.locator('text=cmd.topic').first()).toBeVisible();
     await expect(page.locator('text=cmd.dead.dlx').first()).toBeVisible();
-    await page.waitForTimeout(3000);
+    marcas.marcar('listo');
+    await page.waitForTimeout(7000);
+    marcas.guardar('cluster-exchanges');
   });
 
   test('las colas llevan politica de retencion y dead-lettering', async ({ page }) => {
@@ -84,6 +105,8 @@ test.describe('Cluster de RabbitMQ', () => {
     // DLQ; sin el, con el consumidor caido el mensaje se quedaria encolado.
     await expect(page.locator('text=x-message-ttl').first()).toBeVisible();
     await expect(page.locator('text=x-dead-letter-exchange').first()).toBeVisible();
-    await page.waitForTimeout(3000);
+    marcas.marcar('listo');
+    await page.waitForTimeout(7000);
+    marcas.guardar('cluster-retencion');
   });
 });

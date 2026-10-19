@@ -37,6 +37,17 @@ export function mensajesEn(cola: string): number {
   }
 }
 
+/** Cuantos consumidores tiene enganchados una cola. */
+export function consumidoresEn(cola: string): number {
+  const salida = execSync(
+    `curl -s -u guest:guest "${CONSOLA}/api/queues/%2F/${cola}"`, { encoding: 'utf8' });
+  try {
+    return JSON.parse(salida).consumers ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 /** Descarta los mensajes de una cola, para partir de un estado conocido. */
 export function vaciar(cola: string): void {
   execSync(`curl -s -u guest:guest -X DELETE "${CONSOLA}/api/queues/%2F/${cola}/contents"`,

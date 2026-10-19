@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 
-import { mensajesEn, pausarConsumidor, reanudarConsumidor, URL_APP } from '../entorno';
+import { mensajesEn, pausarConsumidor, reanudarConsumidor, vaciar, URL_APP } from '../entorno';
 
 /**
  * Evidencia 4: la app y la consola del broker, en paralelo.
@@ -44,6 +44,14 @@ test.describe('La app y el broker al mismo tiempo', () => {
 
   test('crear un pedido llena las tres colas y el consumidor las vacia', async ({ browser }) => {
     test.setTimeout(6 * 60 * 1000);
+
+    // Partir con las SEIS colas en cero, incluidas las muertas. La narracion
+    // afirma que estan todas en cero, y un mensaje olvidado de una corrida
+    // anterior dejaria esa afirmacion desmentida en pantalla.
+    for (const c of ['q.cmd.email', 'q.cmd.kitchen', 'q.cmd.invoice',
+                     'q.cmd.email.dlq', 'q.cmd.kitchen.dlq', 'q.cmd.invoice.dlq']) {
+      vaciar(c);
+    }
 
     const ctxConsola = await browser.newContext({
       viewport: { width: 1280, height: 720 },
@@ -113,9 +121,12 @@ test.describe('La app y el broker al mismo tiempo', () => {
     // se queden a la vista en vez de procesarse al instante.
     pausarConsumidor();
     marcas.pausa = Date.now() - tConsola;
-    // Un refresco de consola alcanza: pausar no cambia nada en pantalla, el
-    // consumidor sigue figurando conectado porque la conexion AMQP no se cierra.
-    await consola.waitForTimeout(3000);
+    // Se sostiene la pantalla un rato largo a proposito: esta es la fase donde
+    // se explica POR QUE se pausa el consumidor, y la explicacion no entra en
+    // tres segundos. En pantalla no cambia nada —pausar no cierra la conexion
+    // AMQP, asi que el consumidor sigue figurando conectado— y eso es
+    // justamente lo que hay que mirar mientras se explica.
+    await consola.waitForTimeout(15000);
 
     // El momento: una sola accion publica tres comandos.
     await app.locator('button:has-text("Confirmar pedido")').click();
@@ -126,7 +137,7 @@ test.describe('La app y el broker al mismo tiempo', () => {
     // la API del broker, no a ojo sobre el video: si el pedido no llegara a
     // las colas, el video no serviria de evidencia y la prueba tiene que
     // fallar aqui y no pasar en falso.
-    await consola.waitForTimeout(5000);
+    await consola.waitForTimeout(6000);
     const encoladas = {
       email: mensajesEn('q.cmd.email'),
       kitchen: mensajesEn('q.cmd.kitchen'),
@@ -137,12 +148,12 @@ test.describe('La app y el broker al mismo tiempo', () => {
     expect(encoladas.kitchen, 'q.cmd.kitchen deberia tener el comando encolado').toBeGreaterThan(0);
     expect(encoladas.invoice, 'q.cmd.invoice deberia tener el comando encolado').toBeGreaterThan(0);
 
-    await consola.waitForTimeout(9000);
+    await consola.waitForTimeout(14000);
 
     // Y al reanudar el consumidor, se vacian.
     reanudarConsumidor();
     marcas.reanudacion = Date.now() - tConsola;
-    await consola.waitForTimeout(16000);
+    await consola.waitForTimeout(18000);
 
     await expect(app.locator('text=CREADO').first()).toBeVisible({ timeout: 30000 });
     await app.waitForTimeout(3000);

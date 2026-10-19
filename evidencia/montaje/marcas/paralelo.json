@@ -1,0 +1,22 @@
+[
+  {
+    "paso": "inicio",
+    "segundo": 0.0
+  },
+  {
+    "paso": "pausa",
+    "segundo": 7.33
+  },
+  {
+    "paso": "confirmacion",
+    "segundo": 28.96
+  },
+  {
+    "paso": "reanudacion",
+    "segundo": 51.44
+  },
+  {
+    "paso": "fin",
+    "segundo": 66.44
+  }
+]

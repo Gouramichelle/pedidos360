@@ -54,4 +54,8 @@ ffmpeg -y -loglevel error -ss "$RECORTE" -i "$APP" -ss "$RECORTE" -i "$CON" -i m
   -map "[v]" -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -r 25 -an "$TMP"
 
 mv "$TMP" "$SALIDA"
+# Las marcas quedan trasladadas al tiempo del clip compuesto, para que la
+# narracion pueda apuntar a cada fase del tramo por nombre.
+python3 montaje/ajustar-marcas-paralelo.py "$RECORTE"
+
 printf '\n  %s  %ss\n' "$SALIDA" "$(dur "$SALIDA" | cut -d. -f1)"

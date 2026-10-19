@@ -40,88 +40,103 @@
     "dur": 35.16
   },
   {
-    "id": "paralelo",
+    "id": "paralelo-inicio",
     "inicio": 167.977006,
-    "dur": 78.55415
+    "dur": 16.127302
+  },
+  {
+    "id": "paralelo-pausa",
+    "inicio": 184.104308,
+    "dur": 34.668435
+  },
+  {
+    "id": "paralelo-mensajes",
+    "inicio": 218.772743,
+    "dur": 38.390476
+  },
+  {
+    "id": "paralelo-drenaje",
+    "inicio": 257.16321899999997,
+    "dur": 24.033696
   },
   {
     "id": "cfg-1-yml",
-    "inicio": 246.531156,
+    "inicio": 281.196915,
     "dur": 27.702403999999998
   },
   {
     "id": "cfg-2-cola",
-    "inicio": 274.23356,
+    "inicio": 308.899319,
     "dur": 31.196281
   },
   {
     "id": "cfg-3-dlq",
-    "inicio": 305.429841,
+    "inicio": 340.0956,
     "dur": 28.281451
   },
   {
     "id": "cfg-4-bindings",
-    "inicio": 333.711292,
+    "inicio": 368.377051,
     "dur": 25.538594
   },
   {
     "id": "cluster",
-    "inicio": 359.249886,
+    "inicio": 393.915645,
     "dur": 16.841905
   },
   {
     "id": "colas",
-    "inicio": 376.091791,
+    "inicio": 410.75755,
     "dur": 22.24576
   },
   {
     "id": "exchanges",
-    "inicio": 398.337551,
+    "inicio": 433.00331,
     "dur": 32.717279
   },
   {
     "id": "retencion",
-    "inicio": 431.05483000000004,
+    "inicio": 465.720589,
     "dur": 23.789161
   },
   {
     "id": "dlq-caminos",
-    "inicio": 454.843991,
+    "inicio": 489.50975,
     "dur": 50.434785000000005
   },
   {
     "id": "fallo-partida",
-    "inicio": 505.278776,
+    "inicio": 539.944535,
     "dur": 13.665941
   },
   {
     "id": "fallo-caida",
-    "inicio": 518.944717,
-    "dur": 11.74
+    "inicio": 553.610476,
+    "dur": 11.792000000000002
   },
   {
     "id": "fallo-publicar",
-    "inicio": 530.684717,
+    "inicio": 565.402476,
     "dur": 16.423991
   },
   {
     "id": "fallo-espera",
-    "inicio": 547.108708,
-    "dur": 30.680999999999997
+    "inicio": 581.826467,
+    "dur": 30.814000000000004
   },
   {
     "id": "fallo-vencido",
-    "inicio": 577.789708,
+    "inicio": 612.640467,
     "dur": 14.837867999999999
   },
   {
     "id": "fallo-motivo",
-    "inicio": 592.627576,
+    "inicio": 627.4783349999999,
     "dur": 20.607982
   },
   {
     "id": "cierre",
-    "inicio": 613.235558,
+    "inicio": 648.0863169999999,
     "dur": 23.533559999999998
   }
 ]
