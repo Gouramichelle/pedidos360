@@ -67,6 +67,78 @@ Procedimiento completo desde cero. Para volver a poner en marcha un entorno ya
 desplegado despues de que expire la sesion del laboratorio, ver
 [infra/docs/checklist-reinicio-lab.md](infra/docs/checklist-reinicio-lab.md).
 
+## 0. Levantarlo en cualquier cuenta de AWS
+
+Las secciones siguientes describen el procedimiento por consola, tal como se
+hizo la primera vez. Si lo unico que quieres es ponerlo en marcha, los scripts
+de `infra/aws/` lo hacen entero y funcionan en **cualquier cuenta y cualquier
+region**, no solo en el laboratorio.
+
+### Lo que hace falta tener antes
+
+| | Como conseguirlo |
+|---|---|
+| **Credenciales de AWS** | `aws configure`, o las del Learner Lab pegadas en `~/.aws/credentials`. Necesitan permisos sobre EC2, RDS y API Gateway |
+| **Un key pair EC2** | `aws ec2 create-key-pair --key-name pedidos360 --query KeyMaterial --output text > ~/pedidos360.pem && chmod 400 ~/pedidos360.pem`. En el Learner Lab ya existe y se llama `vockey` |
+| **Una VPC por defecto en la region** | La traen casi todas las cuentas. Si la borraron: `aws ec2 create-default-vpc` |
+| **Un inquilino de Azure AD** | Es lo unico que no se automatiza. Seguir la seccion 1 de este README |
+| **`infra/apps/.env`** | `cp infra/apps/.env.example infra/apps/.env` y completar. La plantilla explica cada variable |
+
+### Lo que cambia segun la cuenta
+
+Los scripts leen tres variables de entorno. Sus valores por defecto son los del
+laboratorio, asi que **fuera de el hay que ajustarlas**:
+
+```bash
+export AWS_REGION=us-east-1      # cualquier region con VPC por defecto
+export KEY_PAIR=pedidos360       # el nombre del key pair, no la ruta del .pem
+export NOMBRE_API=pedidos360-api # el nombre del API Gateway a crear o reusar
+```
+
+La imagen de Amazon Linux se resuelve sola por region, asi que no hay ningun
+`ami-` escrito en el codigo.
+
+### Levantarlo
+
+```bash
+./infra/aws/levantar-todo.sh ~/pedidos360.pem
+```
+
+Encadena todo en el orden correcto: la base de datos, los security groups, las
+dos instancias, el API Gateway, el reapuntado del frontend al Invoke URL nuevo,
+el despliegue de los contenedores y la verificacion final. Se detiene a pedir
+**un paso manual**, el unico que no se puede automatizar: registrar el redirect
+URI nuevo en Azure AD.
+
+Si la infraestructura ya existe y solo cambiaron las direcciones publicas:
+
+```bash
+./infra/aws/provisionar.sh          # reutiliza lo que exista y arranca lo detenido
+./infra/aws/actualizar-gateway.sh   # reapunta integraciones y CORS
+./infra/aws/desplegar.sh ~/pedidos360.pem
+./infra/aws/verificar.sh ~/pedidos360.pem
+```
+
+### Lo que cuesta
+
+Fuera del laboratorio esto **se factura**. Dos `t3.medium` y una `db.t3.micro`
+corriendo todo el mes son del orden de 70 a 80 dolares; la instancia de RDS
+entra en la capa gratuita el primer ano, las EC2 no. Para una demostracion
+conviene detener las instancias al terminar:
+
+```bash
+aws ec2 stop-instances --instance-ids <id-apps> <id-broker>
+```
+
+Detenerlas no borra nada, pero **al arrancarlas cambia la IP publica**, asi que
+hay que volver a correr `actualizar-gateway.sh` y `desplegar.sh`.
+
+### Si algo falla
+
+`verificar.sh` recorre trece comprobaciones y dice cual fallo. Las causas
+habituales estan al final de
+[evidencia/PASO-A-PASO.md](evidencia/PASO-A-PASO.md).
+
 ## 1. Identidad en Azure AD
 
 Se hace una sola vez y no depende de AWS.

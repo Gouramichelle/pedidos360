@@ -3,17 +3,24 @@
 Todo lo que muestra el video se puede reproducir en vivo. Esta guia es para
 cuando el docente pida demostrarlo en el momento, y para estudiar.
 
-Los datos de esta sesion:
+Las direcciones cambian en cada sesion del laboratorio, asi que esta guia no
+las trae escritas: se cargan en el shell y los comandos las usan tal cual.
 
-| | |
-|---|---|
-| Frontend | `https://3.83.237.65:8085` |
-| API Gateway | `https://0b7fhgzl22.execute-api.us-east-1.amazonaws.com` |
-| ec2-apps | `3.83.237.65` |
-| ec2-broker | `75.101.249.200` (privada `172.31.19.198`) |
+```bash
+cd /Users/gourarodriguez/Desktop/CloudNative
+. infra/aws/entorno-actual.env
+APPS=$APPS_IP_PUBLICA
+BROKER=$BROKER_IP_PUBLICA
+PEM=~/Downloads/labsuser.pem
+GATEWAY=$(aws apigatewayv2 get-apis --region us-east-1 \
+  --query "Items[?Name=='pedidos360-api'].ApiEndpoint|[0]" --output text)
 
-> Si la sesion del lab caduco, las IPs cambian. Para recuperarlas:
-> `cat infra/aws/entorno-actual.env` despues de correr `provisionar.sh`.
+echo "  frontend  https://$APPS:8085"
+echo "  broker    $BROKER"
+echo "  gateway   $GATEWAY"
+```
+
+`entorno-actual.env` lo deja `provisionar.sh`. Si no existe, correlo primero.
 
 ---
 
@@ -26,10 +33,10 @@ preguntan. Se entra por un tunel SSH.
 En una terminal que vas a dejar abierta:
 
 ```bash
-ssh -i ~/Downloads/labsuser.pem \
+ssh -i "$PEM" \
     -L 15672:localhost:15672 \
     -L 15673:localhost:15673 \
-    ec2-user@75.101.249.200
+    ec2-user@$BROKER
 ```
 
 Esa terminal se queda ocupada: es el tunel. No la cierres.
@@ -61,7 +68,7 @@ Comparten metadata porque estan en el mismo cluster.
 Desde la terminal tambien:
 
 ```bash
-ssh -i ~/Downloads/labsuser.pem ec2-user@75.101.249.200 \
+ssh -i "$PEM" ec2-user@$BROKER \
   'sudo docker exec mq-rabbit1-1 rabbitmq-diagnostics -q cluster_status'
 ```
 
@@ -144,7 +151,7 @@ Esta es la demostracion de que todo esta conectado de verdad. Conviene tener
 
 1. En la consola, andate a **Overview** y mira el grafico **Message rates**.
    Esta en cero.
-2. En la aplicacion, `https://3.83.237.65:8085`, entra con tu cuenta.
+2. En la aplicacion, `https://$APPS:8085`, entra con tu cuenta.
 3. **Pedidos → + Nuevo pedido**, elegi un par de productos, **Agregar** a cada
    uno, y **Confirmar pedido**.
 4. Volve a la consola. En unos segundos el grafico muestra el pico. El grafico
@@ -165,7 +172,7 @@ caido los mensajes se quedan a la vista.
 ## 7. Ver los logs de los consumidores
 
 ```bash
-ssh -i ~/Downloads/labsuser.pem ec2-user@3.83.237.65 \
+ssh -i "$PEM" ec2-user@$APPS \
   'sudo docker logs apps-ms-notify-1 --tail 20'
 ```
 
@@ -182,7 +189,7 @@ ConfirmacionDeMensajes    : [email] Evento ... confirmado (ACK)
 Para resaltarlo:
 
 ```bash
-ssh -i ~/Downloads/labsuser.pem ec2-user@3.83.237.65 \
+ssh -i "$PEM" ec2-user@$APPS \
   'sudo docker logs apps-ms-notify-1 2>&1 | grep -oE "correlationId=[a-f0-9-]+" | tail -3 | sort -u'
 ```
 
@@ -197,7 +204,7 @@ El escenario completo, en vivo. Toma unos 90 segundos.
 **Paso 1 — Bajar el consumidor**
 
 ```bash
-ssh -i ~/Downloads/labsuser.pem ec2-user@3.83.237.65 \
+ssh -i "$PEM" ec2-user@$APPS \
   'cd ~/infra/apps && sudo docker compose stop ms-notify'
 ```
 
@@ -250,7 +257,7 @@ queue:  q.cmd.kitchen
 **Paso 6 — Levantar el consumidor**
 
 ```bash
-ssh -i ~/Downloads/labsuser.pem ec2-user@3.83.237.65 \
+ssh -i "$PEM" ec2-user@$APPS \
   'cd ~/infra/apps && sudo docker compose up -d ms-notify'
 ```
 
@@ -265,21 +272,21 @@ Desde cualquier terminal, sin necesidad de SSH:
 ```bash
 # Sin token: 401
 curl -s -o /dev/null -w "%{http_code}\n" \
-  https://0b7fhgzl22.execute-api.us-east-1.amazonaws.com/api/orders
+  $GATEWAY/api/orders
 
 # Con un token inventado: tambien 401
 curl -s -o /dev/null -w "%{http_code}\n" \
   -H "Authorization: Bearer token-falso" \
-  https://0b7fhgzl22.execute-api.us-east-1.amazonaws.com/api/orders
+  $GATEWAY/api/orders
 ```
 
 Y el preflight de CORS, que si pasa sin token porque tiene que pasar:
 
 ```bash
 curl -s -i -X OPTIONS \
-  -H "Origin: https://3.83.237.65:8085" \
+  -H "Origin: https://$APPS:8085" \
   -H "Access-Control-Request-Method: GET" \
-  https://0b7fhgzl22.execute-api.us-east-1.amazonaws.com/api/orders | grep -i "^access-control"
+  $GATEWAY/api/orders | grep -i "^access-control"
 ```
 
 Devuelve el origen permitido y los cinco metodos. **Un solo origen**: el del
@@ -292,7 +299,7 @@ porque esa cabecera declara los metodos de la peticion real.
 
 ```bash
 cd /Users/gourarodriguez/Desktop/CloudNative
-./infra/aws/verificar.sh ~/Downloads/labsuser.pem
+./infra/aws/verificar.sh "$PEM"
 ```
 
 Recorre los mismos puntos: health de los seis servicios, 401 sin token, el
