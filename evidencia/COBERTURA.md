@@ -163,24 +163,37 @@ Once contenedores en dos instancias, todos levantados con docker compose.
 
 ---
 
-## Lo unico que queda: el portal de Azure
+## El inquilino de IDaaS, capturado
 
-El inquilino de Entra ID y sus usuarios no se pueden capturar desde aqui: hacen
-falta las credenciales del portal, que son personales. El video muestra el
-login funcionando contra el tenant real, pero no la pantalla de administracion.
+Cuatro capturas del portal, en `entregables/azure/`, tomadas contra el
+inquilino real. Su `LEEME.md` explica que prueba cada una.
 
-Las diapositivas 6 a 8 del deck traen la ruta exacta para mostrarlo en vivo:
-
-| Que mostrar | Donde |
+| Captura | Que prueba |
 |---|---|
-| El inquilino, con su Tenant ID | Entra ID > Overview |
-| El registro de la aplicacion | Entra ID > App registrations > Pedidos360 |
-| La plataforma SPA y el redirect URI | Pedidos360 > Authentication |
-| La version 2 de los tokens | Pedidos360 > Manifest |
-| Los usuarios y sus roles | Enterprise applications > Pedidos360 > Users and groups |
+| El inquilino | `actividadcloudnative`, Tenant ID `2d0922c9-...`, 4 usuarios, 3 aplicaciones |
+| Authentication | Plataforma **Single-page application** y el redirect URI del frontend desplegado |
+| Enterprise applications | `Pedidos360`, Application ID `d0120ca1-...`, Identifier URI `api://d0120ca1-...` |
+| Users | Cuatro usuarios: una Member y tres Guest, una por invitacion externa |
 
-Conviene tener la pestaña abierta y con sesion iniciada antes de empezar, para
-no gastar tiempo autenticandose delante del curso.
+**Lo que ata el IDaaS con el API Manager** no son las capturas, son los
+identificadores, que coinciden:
+
+| En Azure | En el API Gateway |
+|---|---|
+| Tenant ID `2d0922c9-...` | Emisor `.../2d0922c9-.../v2.0` |
+| Application ID `d0120ca1-...` | Audiencia `d0120ca1-...` |
+| Identifier URI `api://d0120ca1-...` | Audiencia `api://d0120ca1-...` |
+
+El validador acepta exactamente el inquilino y la aplicacion registrados en el
+portal. Nada mas.
+
+Se rehacen con `node montaje/azure-capturas.mjs`.
+
+> **Un cabo suelto que encontramos mirando esto:** quedo registrado el redirect
+> URI `https://3.83.237.65:8085/auth/callback`, de una sesion anterior del
+> laboratorio. Esa IP ya no es nuestra y AWS puede reasignarla, asi que conviene
+> borrarla. Cada redirect URI registrado es un destino al que el proveedor esta
+> dispuesto a mandar un codigo de autorizacion.
 
 ---
 
