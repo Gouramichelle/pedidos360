@@ -24,14 +24,11 @@ TRAMOS = [
     dict(id='app-login', kind='clip', src='entregables/6-login-catalogo-y-pedido.webm',
          marcas='app', desde='login', hasta='redirect', texto="""
         Empezamos por la pantalla de inicio de sesion. La aplicacion no tiene
-        usuarios propios ni guarda contrasenas: delega toda la identidad en
-        Azure, que es nuestro proveedor. Por eso el unico boton dice iniciar
-        sesion con Microsoft.
-        Cuando lo presione, el navegador va a salir de nuestra aplicacion, va a
-        ir al proveedor de identidad, y va a volver con un codigo que la
-        aplicacion intercambia por un token de acceso. Es el flujo Authorization
-        Code con PKCE, el que corresponde a una aplicacion de pagina unica,
-        porque no puede guardar un secreto.
+        usuarios propios ni guarda contrasenas: delega la identidad en Azure.
+        Cuando presione el boton, el navegador sale de nuestra aplicacion, va al
+        proveedor, y vuelve con un codigo que se intercambia por un token de
+        acceso. Es el flujo Authorization Code con PKCE, el que corresponde a
+        una aplicacion de pagina unica.
     """),
 
     dict(id='app-redirect', kind='clip', src='entregables/6-login-catalogo-y-pedido.webm',
@@ -78,15 +75,13 @@ TRAMOS = [
     """),
 
     dict(id='consumidores', kind='clip', src='entregables/7-auditoria-y-reportes.webm', texto="""
-        Aca esta la otra mitad del desacoplamiento. El microservicio de
-        auditoria y el de reportes no le preguntan nada al de pedidos: se
-        alimentan solos de los eventos que viajan por Kafka.
+        Aca esta la otra mitad del desacoplamiento. Auditoria y reportes no le
+        preguntan nada al microservicio de pedidos: se alimentan solos de los
+        eventos que viajan por Kafka.
         En auditoria aparece el evento OrderCreated del pedido que acabo de
-        crear. Y en reportes, los indicadores ya lo incluyen. Nadie los llamo:
-        reaccionaron al evento.
-        Eso es lo que da el desacoplamiento. Si manana quisiera un cuarto
-        servicio que reaccione a los pedidos, lo conecto al mismo topico y el
-        microservicio de pedidos no cambia ni una linea de codigo.
+        crear, y en reportes los indicadores ya lo incluyen. Nadie los llamo.
+        Si manana quisiera un cuarto servicio que reaccione a los pedidos, lo
+        conecto al mismo topico y el de pedidos no cambia una linea.
     """),
 
     dict(id='paralelo-inicio', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4',
@@ -100,16 +95,13 @@ TRAMOS = [
 
     dict(id='paralelo-pausa', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4',
          marcas='paralelo', desde='pausa', hasta='confirmacion', texto="""
-        Antes de confirmar el pedido voy a pausar el consumidor, y conviene que
-        explique por que, porque no es para disimular nada.
+        Antes de confirmar voy a pausar el consumidor, y conviene que explique
+        por que.
         Con los tres consumidores andando, un mensaje se publica y se procesa en
         milisegundos. La consola muestrea cada cinco segundos: cuando refresca,
-        el mensaje ya se consumio y el contador sigue en cero. Parece que no
-        paso nada, cuando en realidad paso todo.
-        Pausando el consumidor, el mensaje se queda a la vista. Es exactamente
-        el mismo trafico; lo unico que hago es hacerlo visible.
-        Fijense que el consumidor sigue figurando conectado: pausar no cierra la
-        conexion, solo suspende el proceso.
+        el contador ya volvio a cero y parece que no paso nada. Pausando el
+        consumidor, el mensaje se queda a la vista. Es el mismo trafico; lo
+        unico que hago es hacerlo visible.
     """),
 
     dict(id='paralelo-mensajes', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4',
@@ -117,13 +109,12 @@ TRAMOS = [
         Confirmo el pedido. Y miren la derecha: las tres colas de comando pasan
         a tener un mensaje cada una. Correo, cocina y facturacion. Una sola
         accion del usuario, tres comandos publicados.
-        Fijense ademas en que columna estan: Unacked, no Ready. Eso significa
-        que el consumidor ya los recibio, pero todavia no los confirmo. Es el
-        modo de confirmacion manual funcionando a la vista: el mensaje no se da
-        por procesado hasta que el codigo lo confirma explicitamente.
-        Y si dudan de que los dos lados sean el mismo instante, ahi estan los
-        relojes: el pedido dice creado a una hora, y la consola refrescada unos
-        segundos despues. Son dos relojes reales, de dos navegadores distintos.
+        Fijense ademas en que columna estan: Unacked, no Ready. El consumidor ya
+        los recibio, pero todavia no los confirmo. Es la confirmacion manual a
+        la vista: el mensaje no se da por procesado hasta que el codigo lo
+        confirma explicitamente.
+        Y si dudan de que sea el mismo instante, ahi estan los relojes, de dos
+        navegadores distintos.
     """),
 
     dict(id='paralelo-drenaje', kind='clip', src='entregables/8-app-y-broker-en-paralelo.mp4',
@@ -154,12 +145,12 @@ TRAMOS = [
         Y esta es la construccion de cada cola de comando, en una sola funcion
         que los tres flujos comparten.
         Se declara durable, para que sobreviva al reinicio del broker. Despues
-        se le ponen dos argumentos de dead lettering: el exchange al que van los
+        van dos argumentos de dead lettering: el exchange al que van los
         mensajes que no se pudieron entregar, y la clave con la que se enrutan.
-        Y el tercero es el que mas importa, el que esta resaltado: equis message
-        t t l. Define cuanto vive un comando sin que nadie lo consuma. Sin este
-        argumento, si el consumidor estuviera caido el mensaje se quedaria
-        encolado para siempre y la cola muerta no se usaria nunca.
+        Y el tercero es el que mas importa, el resaltado: equis message t t l.
+        Define cuanto vive un comando sin que nadie lo consuma. Sin el, con el
+        consumidor caido el mensaje quedaria encolado para siempre y la cola
+        muerta no se usaria nunca.
     """),
 
     dict(id='cfg-3-dlq', kind='imagen', src='montaje/laminas/png/cfg-3-dlq.png', texto="""
@@ -210,13 +201,12 @@ TRAMOS = [
         Estos son los exchanges. Tenemos los dos tipos que pide la pauta, y cada
         uno resuelve un caso distinto.
         El direct enruta por clave exacta. Lo usa el ticket de cocina, que tiene
-        un unico destinatario y no admite variantes.
+        un unico destinatario.
         El topic enruta por patron con comodines. Lo usan el correo y el
-        documento de cobro, que si las admiten. El dia que exista un
-        email punto send punto urgente, el patron email punto asterisco lo
-        recibe sin tocar un solo binding.
-        El tercero, cmd punto dead punto dlx, es el exchange de dead lettering:
-        es a donde el broker enruta lo que no se pudo entregar.
+        documento de cobro: el dia que exista un email punto send punto urgente,
+        el patron email punto asterisco lo recibe sin tocar un binding.
+        El tercero es el exchange de dead lettering, a donde el broker enruta lo
+        que no se pudo entregar.
     """),
 
     dict(id='retencion', kind='clip', src='entregables/4-politicas-de-retencion.webm',
@@ -231,22 +221,18 @@ TRAMOS = [
     """),
 
     dict(id='dlq-caminos', kind='imagen', src='montaje/laminas/png/dlq-1-caminos.png', texto="""
-        Antes de la ultima demostracion, quiero detenerme en las colas muertas,
-        porque es donde esta lo mas interesante del diseno.
-        Un mensaje llega a una cola muerta por dos caminos distintos, y el
-        broker deja escrito cual fue, en un encabezado del propio mensaje
-        llamado x death.
-        El primero es rejected. El consumidor esta arriba y rechaza el mensaje
-        porque viene mal formado: sin cliente, sin pedido, sin estado. Lo decide
-        nuestro codigo, con un rechazo sin reencolar, porque reintentarlo daria
-        exactamente el mismo resultado.
-        El segundo es expired. Nadie lo consumio dentro del tiempo de vida de la
+        Antes de la ultima demostracion, quiero detenerme en las colas muertas.
+        Un mensaje llega a una por dos caminos distintos, y el broker deja
+        escrito cual fue, en un encabezado del propio mensaje llamado x death.
+        El primero es rejected: el consumidor esta arriba y rechaza el mensaje
+        porque viene mal formado, sin cliente o sin pedido. Lo decide nuestro
+        codigo, con un rechazo sin reencolar, porque reintentarlo daria el mismo
+        resultado.
+        El segundo es expired: nadie lo consumio dentro del tiempo de vida de la
         cola, por ejemplo porque el consumidor esta caido. Lo decide el broker
-        solo, sin que nadie intervenga. El mensaje estaba bien; lo que falto fue
-        quien lo atendiera.
-        Esa distincion importa: el sistema diferencia entre el mensaje estaba
-        malo y el servicio no estaba disponible. Son dos problemas distintos y
-        se resuelven distinto.
+        solo. El mensaje estaba bien; falto quien lo atendiera.
+        El sistema diferencia entre el mensaje estaba malo y el servicio no
+        estaba disponible. Son dos problemas distintos y se resuelven distinto.
     """),
 
     dict(id='fallo-partida', kind='clip', src='entregables/5-caida-de-consumidor.webm',

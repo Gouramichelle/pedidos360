@@ -57,6 +57,7 @@ habla de algo que ya salio de pantalla. Paso, y asi se corrigio.
 | `rehacer-todo.sh` | Rehace todo de una sola vez |
 | `montaje/narracion.py` | El guion: que se ve y que se dice en cada tramo |
 | `montaje/ensamblar.py` | Genera la voz y arma el video |
+| `montaje/guion.py` | Escribe GUION.md con los tiempos que midio el ensamblador |
 | `montaje/laminas.mjs` | Laminas de codigo de los tramos explicativos |
 | `montaje/tarjetas.mjs` | Portada y cierre |
 | `montaje/montar-paralelo.sh` | Compone la app y la consola lado a lado |
@@ -65,9 +66,14 @@ habla de algo que ya salio de pantalla. Paso, y asi se corrigio.
 
 ## Hacerlo a mano
 
-Si el docente pide reproducirlo en vivo, el recorrido esta en
-**[PASO-A-PASO.md](PASO-A-PASO.md)**. El texto completo de la narracion, para
-estudiar, esta en `montaje/narracion.py`.
+**[GUION.md](GUION.md)** es lo que conviene llevar a la defensa: el texto de la
+narracion tramo por tramo, con el minuto en que va cada uno y **la ruta en vivo
+de cada tramo** —que abrir o que correr para mostrar en el momento lo mismo que
+se ve grabado—. Lo genera `montaje/guion.py` desde `narracion.py` y los tiempos
+reales del video, asi que no puede quedar desfasado.
+
+**[PASO-A-PASO.md](PASO-A-PASO.md)** es el recorrido completo contra el
+despliegue en AWS, con el tunel SSH y los comandos por SSH.
 
 ## Si cambia la IP de la sesion del lab
 

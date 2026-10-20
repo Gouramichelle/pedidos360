@@ -17,9 +17,16 @@ from narracion import TRAMOS
 
 RAIZ = Path(__file__).parent.parent
 VOZ = "Mónica"
-PALABRAS_POR_MINUTO = 155
-COLA_SILENCIO = 1.2          # respiro al final de cada tramo
+# La pauta de EP4 exige que la presentacion dure entre cinco y diez minutos.
+# A 155 palabras por minuto el video daba 11:11 y se pasaba. A 172 entra, y
+# sigue siendo un ritmo de exposicion normal: no es lectura acelerada.
+PALABRAS_POR_MINUTO = 172
+COLA_SILENCIO = 0.9          # respiro al final de cada tramo
 ESTIRADO_MAXIMO = 2.2        # mas alla de esto, el video se ve en camara lenta
+# Cuando la grabacion dura mas que su narracion, se acelera en vez de dejarla
+# correr en silencio. Hasta 1.6x una grabacion de pantalla se sigue leyendo sin
+# problema, y evita tramos donde no se dice nada mientras algo se mueve.
+ACELERADO_MAXIMO = 1.6
 
 AUD = RAIZ / "montaje/audio"
 SEG = RAIZ / "montaje/segmentos"
@@ -104,10 +111,12 @@ def construir_tramo(t, dur_voz):
     factor = objetivo / dur_clip
 
     if factor <= 1.0:
-        # El clip dura mas que la narracion: se deja tal cual y la voz queda
-        # con silencio al final. Cortar el clip perderia parte de lo mostrado.
-        objetivo = dur_clip
-        filtro_v = "[0:v]scale=1280:720,setsar=1[v]"
+        # El clip dura mas que la narracion. Se acelera hasta el tope para que
+        # no queden segundos en silencio, sin cortar nada de lo mostrado.
+        acelerado = max(dur_clip / ACELERADO_MAXIMO, objetivo)
+        factor_v = acelerado / dur_clip
+        objetivo = acelerado
+        filtro_v = f"[0:v]setpts={factor_v:.4f}*PTS,scale=1280:720,setsar=1[v]"
     elif factor <= ESTIRADO_MAXIMO:
         # Se ralentiza para acompanar la narracion. En una grabacion de
         # pantalla no se nota, y da tiempo a leer lo que esta en pantalla.
