@@ -1,13 +1,13 @@
 {
   "consola": 0,
-  "app": 43,
-  "pausa": 16331,
-  "confirmacion": 31957,
+  "app": 51,
+  "pausa": 25788,
+  "confirmacion": 41427,
   "encoladas": {
     "email": 1,
     "kitchen": 1,
     "invoice": 1
   },
-  "reanudacion": 54436,
-  "fin": 75444
+  "reanudacion": 67852,
+  "fin": 88876
 }

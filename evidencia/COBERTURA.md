@@ -61,26 +61,47 @@ Tres soportes que se reparten el trabajo. Ninguno cubre todo solo.
 
 | | Que cubre |
 |---|---|
-| **[El video](entregables/pedidos360-demostracion.mp4)**, 9:56 | La aplicacion funcionando y **toda** la mensajeria: colas, exchanges, retencion, confirmacion manual, los dos caminos a la cola muerta y la caida de un consumidor de punta a punta |
+| **[El video](entregables/pedidos360-demostracion.mp4)**, 9:58, grabado contra AWS | La aplicacion funcionando y **toda** la mensajeria: colas, exchanges, retencion, confirmacion manual, los dos caminos a la cola muerta y la caida de un consumidor de punta a punta |
 | **El deck**, `presentacion/Pedidos360-Presentacion.pptx`, 43 diapositivas | El inquilino de Azure y sus usuarios, la red y los servidores, el API Manager con sus rutas y su CORS, y desde ahora la seccion de mensajeria (29 a 36) |
 | **[El guion](GUION.md)** | El texto de la narracion con la ruta en vivo de cada tramo, para responder en el momento |
 
 ---
 
-## El hueco, dicho sin rodeos
+## El punto 3, cerrado
 
-Todo lo que es **mensajeria** —que es donde estan los ocho indicadores y el 100%
-de la nota tecnica— esta cubierto por el video y reproducible en vivo en local.
+El 20 de octubre se regrabo todo contra el despliegue en AWS. Los ocho clips y
+el video armado salen del entorno desplegado, no del local.
 
-Lo que **no** puede demostrarse ahora mismo es lo que exige la nube levantada:
-
-| Punto de la lista de demo | Estado |
+| Punto de la lista de demo | Donde queda |
 |---|---|
-| La instancia de API Manager y su configuracion | Deck 25 a 27. **El Gateway sigue vivo**: responde 401 sin token |
-| El API Manager validando el JWT | Comprobable ahora: ver abajo |
-| El frontend consumiendo a traves del API Manager | **No demostrable**: las EC2 estan caidas, y el video muestra el frontend local llamando directo |
-| El inquilino de IDaaS y sus usuarios | Deck 6 a 8. En vivo necesita la consola de Azure |
-| El despliegue en la nube y el docker-compose corriendo alla | **No demostrable**: las EC2 estan caidas |
+| La instancia de API Manager y su configuracion | Deck 25 a 27 · el Invoke URL responde |
+| El API Manager validando el JWT | Deck 37 · 401 sin token y con token falso, verificado |
+| **El frontend consumiendo a traves del API Manager** | **Video, desde 0:22.** El bundle servido en `https://54.224.223.31:8085` referencia unicamente el Invoke URL del Gateway, con **cero** referencias a localhost |
+| El inquilino de IDaaS y sus usuarios | Deck 6 a 8 · el login del video es contra el tenant real |
+| El despliegue en la nube y el docker-compose corriendo alla | Video completo · `verificar.sh` en verde |
+
+**Como se comprueba que el frontend no llama a localhost:**
+
+```bash
+JS=$(curl -sk https://54.224.223.31:8085/ | grep -oE 'main[^"]*\.js' | head -1)
+curl -sk "https://54.224.223.31:8085/$JS" > /tmp/main.js
+grep -oE 'https://[a-z0-9]+\.execute-api\.[a-z0-9-]+\.amazonaws\.com' /tmp/main.js | sort -u
+grep -c 'localhost:80' /tmp/main.js
+```
+
+Devuelve el Invoke URL del Gateway, y **0** para localhost.
+
+**Verificacion del despliegue:** 13 de 13 comprobaciones en verde —frontend, los
+seis health, 401 sin token, 401 con token invalido, preflight 200, dos nodos del
+cluster, seis colas con politica de retencion.
+
+El escenario de caida del consumidor se ejecuto **sobre la instancia real**: el
+test detuvo `apps-ms-notify-1`, espero a que venciera el TTL, comprobo que el
+mensaje llegara a la cola muerta con `reason: expired`, y volvio a levantarlo.
+
+---
+
+## Lo que sigue necesitando consola en vivo
 
 ### Lo que si se puede comprobar ahora, sin credenciales
 

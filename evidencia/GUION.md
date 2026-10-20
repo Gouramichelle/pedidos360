@@ -1,7 +1,7 @@
 # Guion de la demostracion
 
 El video **ya viene narrado**: `entregables/pedidos360-demostracion.mp4`,
-9:56 min, con voz en español. No hace falta leer nada encima.
+9:58 min, con voz en español. No hace falta leer nada encima.
 
 Este documento es el texto de esa narracion, con **la ruta en vivo de cada
 tramo**: que abrir o que correr para mostrar en el momento lo mismo que se ve
@@ -74,26 +74,26 @@ Azure AD: la identidad es lo unico que no se levanta en local.
 | **1:29** | El formulario del pedido |
 | **1:49** | El pedido creado |
 | **2:02** | Auditoria y reportes |
-| **2:25** | Las dos pantallas, seis colas en cero |
-| **2:41** | Por que se pausa el consumidor |
+| **2:26** | Las dos pantallas, seis colas en cero |
+| **2:42** | Por que se pausa el consumidor |
 | **3:04** | Las tres colas con su mensaje, en Unacked |
-| **3:33** | Las colas vuelven a cero |
-| **3:57** | La topologia en el application.yml |
+| **3:34** | Las colas vuelven a cero |
+| **3:58** | La topologia en el application.yml |
 | **4:25** | Como se construye una cola de comando |
 | **4:54** | Como se construye una cola muerta |
 | **5:22** | Los tres bindings por flujo |
 | **5:47** | Los dos nodos del cluster |
-| **6:03** | Las seis colas |
-| **6:25** | Los exchanges direct y topic |
+| **6:04** | Las seis colas |
+| **6:26** | Los exchanges direct y topic |
 | **6:53** | Los argumentos de una cola real |
-| **7:16** | Los dos caminos hacia la cola muerta |
+| **7:17** | Los dos caminos hacia la cola muerta |
 | **7:58** | La cola con su consumidor |
 | **8:12** | El consumidor caido, cero consumidores |
-| **8:22** | Se publica un comando valido |
-| **8:38** | El mensaje esperando sin quien lo atienda |
-| **8:58** | Vencido, ya en la cola muerta |
-| **9:12** | El header x-death con reason expired |
-| **9:32** | Resumen |
+| **8:23** | Se publica un comando valido |
+| **8:39** | El mensaje esperando sin quien lo atienda |
+| **9:00** | Vencido, ya en la cola muerta |
+| **9:15** | El header x-death con reason expired |
+| **9:35** | Resumen |
 
 ---
 
@@ -154,7 +154,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
 - Menu lateral → **Auditoria** y → **Reportes**. Los alimenta Kafka, no una llamada a ms-orders.
 - Para mostrar que nadie llamo a nadie, mirar la terminal donde corre **ms-audit**: se ve el consumo del topico `orders.events`, no una peticion HTTP entrante. (En AWS: `docker logs apps-ms-audit-1 --tail 10`.)
 
-## 2:25 — Las dos pantallas, seis colas en cero
+## 2:26 — Las dos pantallas, seis colas en cero
 
 > Ahora quiero demostrar que la conexion entre la aplicacion y el broker es real. A la izquierda la aplicacion, a la derecha la consola de RabbitMQ: dos navegadores distintos, corriendo al mismo tiempo contra el mismo despliegue. Miren la derecha antes de que pase nada: las seis colas en cero.
 
@@ -163,7 +163,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
 - En AWS la consola no esta expuesta a internet: hay que abrir el tunel SSH primero. Ver el punto 1 de PASO-A-PASO.md.
 - Poner el **Refresh every 5 seconds** del selector de arriba a la derecha.
 
-## 2:41 — Por que se pausa el consumidor
+## 2:42 — Por que se pausa el consumidor
 
 > Antes de confirmar voy a pausar el consumidor, y conviene que explique por que. Con los tres consumidores andando, un mensaje se publica y se procesa en milisegundos. La consola muestrea cada cinco segundos: cuando refresca, el contador ya volvio a cero y parece que no paso nada. Pausando el consumidor, el mensaje se queda a la vista. Es el mismo trafico; lo unico que hago es hacerlo visible.
 
@@ -183,7 +183,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
 - Confirmar el pedido y mirar **Queues and Streams**: las tres colas de comando pasan a 1.
 - La columna importante es **Unacked**, no Ready: el consumidor recibio el mensaje pero todavia no lo confirmo. Es el modo MANUAL.
 
-## 3:33 — Las colas vuelven a cero
+## 3:34 — Las colas vuelven a cero
 
 > Ahora reanudo el consumidor. Y las tres colas vuelven a cero: los tres mensajes se procesaron y se confirmaron. Ese es el ciclo completo visto desde los dos lados a la vez. La aplicacion publico, las colas los retuvieron mientras no hubo quien los atendiera, y el consumidor los proceso en cuanto volvio. Y noten que ninguno fue a parar a una cola muerta: se consumieron dentro del tiempo de vida. En un rato vamos a ver que pasa cuando no llegan a tiempo.
 
@@ -195,7 +195,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
     En AWS: `docker compose unpause ms-notify`.
 - Los ACK quedan en el log de ms-notify, uno por flujo, con el **mismo** `correlationId`: los tres comandos vinieron de la misma accion del usuario.
 
-## 3:57 — La topologia en el application.yml
+## 3:58 — La topologia en el application.yml
 
 > Veamos ahora como esta construida cada cola, porque no hay nada improvisado. Toda la topologia se declara en el application punto yaml. Aca estan los tres exchanges, las politicas de retencion, y los tres flujos: correo, cocina y facturacion. Cada flujo define el nombre de su cola, su clave de enrutamiento exacta, y el patron con comodines para el exchange de tipo topic. No hay ni un nombre de cola escrito en el codigo Java. Cambiar como se llama una cola es cambiar esta configuracion.
 
@@ -243,7 +243,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
     docker exec local-rabbit1-1 rabbitmq-diagnostics -q cluster_status
     ```
 
-## 6:03 — Las seis colas
+## 6:04 — Las seis colas
 
 > Aca estan las seis colas que acabamos de ver declaradas. Tres de comando: correo, cocina y facturacion. Y la cola muerta de cada una, que es su respaldo cuando un mensaje no se puede entregar. En la columna de consumidores, las tres de comando tienen uno: es el microservicio de notificaciones conectado. Las colas muertas tienen cero, porque nadie consume de ellas: se revisan a mano.
 
@@ -251,7 +251,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
 - Consola → **Queues and Streams**. Seis: tres de comando y sus tres DLQ.
 - La columna **Consumers**: 1 en las de comando, 0 en las DLQ. Nadie consume de una cola muerta; se revisan a mano.
 
-## 6:25 — Los exchanges direct y topic
+## 6:26 — Los exchanges direct y topic
 
 > Estos son los exchanges. Tenemos los dos tipos que pide la pauta, y cada uno resuelve un caso distinto. El direct enruta por clave exacta. Lo usa el ticket de cocina, que tiene un unico destinatario. El topic enruta por patron con comodines. Lo usan el correo y el documento de cobro: el dia que exista un email punto send punto urgente, el patron email punto asterisco lo recibe sin tocar un binding. El tercero es el exchange de dead lettering, a donde el broker enruta lo que no se pudo entregar.
 
@@ -267,7 +267,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
 - Consola → **Queues → q.cmd.kitchen → Details → Features**: ahi estan `x-message-ttl`, `x-dead-letter-exchange` y `x-dead-letter-routing-key`.
 - Despues **q.cmd.kitchen.dlq**: tiene su propia politica, TTL de 14 dias y `x-max-length` 1000. Esa es la politica de limpieza.
 
-## 7:16 — Los dos caminos hacia la cola muerta
+## 7:17 — Los dos caminos hacia la cola muerta
 
 > Antes de la ultima demostracion, quiero detenerme en las colas muertas. Un mensaje llega a una por dos caminos distintos, y el broker deja escrito cual fue, en un encabezado del propio mensaje llamado x death. El primero es rejected: el consumidor esta arriba y rechaza el mensaje porque viene mal formado, sin cliente o sin pedido. Lo decide nuestro codigo, con un rechazo sin reencolar, porque reintentarlo daria el mismo resultado. El segundo es expired: nadie lo consumio dentro del tiempo de vida de la cola, por ejemplo porque el consumidor esta caido. Lo decide el broker solo. El mensaje estaba bien; falto quien lo atendiera. El sistema diferencia entre el mensaje estaba malo y el servicio no estaba disponible. Son dos problemas distintos y se resuelven distinto.
 
@@ -293,7 +293,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
     ```
     En AWS: `docker compose stop ms-notify`.
 
-## 8:22 — Se publica un comando valido
+## 8:23 — Se publica un comando valido
 
 > Publico un comando perfectamente valido por el exchange direct, con la clave kitchen punto ticket. Quiero subrayar esto: el mensaje no tiene nada malo. Trae su pedido, su cliente y su cantidad de items. El problema no es el mensaje; es que el servicio que tenia que atenderlo no esta.
 
@@ -307,7 +307,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
     ```
 - Subrayar que **el mensaje no tiene nada malo**. El problema no es el mensaje: es que el servicio que debia atenderlo no esta.
 
-## 8:38 — El mensaje esperando sin quien lo atienda
+## 8:39 — El mensaje esperando sin quien lo atienda
 
 > El mensaje queda encolado. Un mensaje, cero consumidores. Si no hicieramos nada, se quedaria ahi para siempre, y la cola muerta no serviria de nada. Por eso configuramos el tiempo de vida. Ahora esperamos los treinta segundos.
 
@@ -315,7 +315,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
 - Consola → **Queues → q.cmd.kitchen**: 1 mensaje, 0 consumidores.
 - Son 30 segundos de espera. Es buen momento para mostrar el `x-message-ttl` en **Features** de esa misma pantalla: eso es lo que esta corriendo.
 
-## 8:58 — Vencido, ya en la cola muerta
+## 9:00 — Vencido, ya en la cola muerta
 
 > Y ahi esta: vencio el tiempo de vida y el broker lo enruta solo a la cola muerta. La cola de comando queda en cero y la cola muerta pasa a uno. Nadie intervino, ni nuestro codigo ni nosotros: lo hizo RabbitMQ aplicando la politica que declaramos en la configuracion.
 
@@ -323,7 +323,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
 - Sin tocar nada: `q.cmd.kitchen` vuelve a 0 y **q.cmd.kitchen.dlq pasa a 1**.
 - Lo hizo el broker solo. Nadie intervino, y el consumidor sigue abajo.
 
-## 9:12 — El header x-death con reason expired
+## 9:15 — El header x-death con reason expired
 
 > Y esta es la evidencia. Abro el mensaje dentro de la cola muerta, y el broker dejo escrito el motivo en el encabezado x death: expired. Nadie lo consumio a tiempo. Tambien queda registrada la cola de origen. Si en cambio un consumidor lo hubiera rechazado por venir mal formado, ahi diria rejected. Son los dos caminos que vimos recien, y el sistema los distingue solo.
 
@@ -335,7 +335,7 @@ Azure AD: la identidad es lo unico que no se levanta en local.
     cd ms-pedidos360-notify && mvn spring-boot:run -Dspring-boot.run.profiles=dev
     ```
 
-## 9:32 — Resumen
+## 9:35 — Resumen
 
 > Eso es todo el flujo. Identidad federada con OAuth dos y OpenID Connect, el API Gateway validando el token en el borde, un cluster de dos nodos levantado con docker compose, seis colas con sus colas muertas, los dos tipos de exchange con trafico real, politicas de retencion y limpieza, y un fallo soportado sin perder el mensaje. Todo lo que vieron corre en el despliegue real y se puede reproducir en vivo. Muchas gracias.
 

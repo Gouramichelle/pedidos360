@@ -5,18 +5,18 @@
   },
   {
     "paso": "pausa",
-    "segundo": 7.33
+    "segundo": 18.79
   },
   {
     "paso": "confirmacion",
-    "segundo": 28.96
+    "segundo": 40.43
   },
   {
     "paso": "reanudacion",
-    "segundo": 51.44
+    "segundo": 66.85
   },
   {
     "paso": "fin",
-    "segundo": 66.44
+    "segundo": 81.88
   }
 ]
