@@ -77,6 +77,6 @@ despliegue en AWS, con el tunel SSH y los comandos por SSH.
 
 ## Si cambia la IP de la sesion del lab
 
-La URL del despliegue esta fija en tres lugares: el script `sesion` de
-`package.json`, y la constante `APP` de `specs/02-app/flujo.spec.ts` y
-`specs/03-paralelo/en-vivo.spec.ts`.
+Solo queda escrita en un lugar: el script `sesion` de `package.json`. Los
+specs la leen de `URL_APP`, asi que para grabar contra otro destino basta
+`DESTINO=aws URL_APP=https://<ip>:8085 ./rehacer-todo.sh`.
