@@ -189,11 +189,15 @@ portal. Nada mas.
 
 Se rehacen con `node montaje/azure-capturas.mjs`.
 
-> **Un cabo suelto que encontramos mirando esto:** quedo registrado el redirect
-> URI `https://3.83.237.65:8085/auth/callback`, de una sesion anterior del
-> laboratorio. Esa IP ya no es nuestra y AWS puede reasignarla, asi que conviene
-> borrarla. Cada redirect URI registrado es un destino al que el proveedor esta
-> dispuesto a mandar un codigo de autorizacion.
+> **Sobre los redirect URI de sesiones anteriores:** estan registrados los de
+> `3.83.237.65` y `localhost:4200`, ademas del actual. Se dejan a proposito: el
+> docente confirmo que no es problema para la evaluacion, y tenerlos evita
+> reconfigurar Azure cada vez que el laboratorio cambia de direccion.
+>
+> Si preguntan, la respuesta honesta es que fuera de un entorno academico se
+> borrarian: cada redirect URI registrado es un destino al que el proveedor esta
+> dispuesto a mandar un codigo de autorizacion, y una IP publica liberada puede
+> quedar en manos de otra cuenta.
 
 ---
 

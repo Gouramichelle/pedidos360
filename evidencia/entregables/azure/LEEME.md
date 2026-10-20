@@ -25,12 +25,13 @@ estan registrados en el portal, y nada mas.
 
 ## Dos cosas que conviene saber
 
-**Queda un redirect URI colgando.** En `2-registro-autenticacion.png` aparece
-`https://3.83.237.65:8085/auth/callback`, de una sesion anterior del
-laboratorio. Esa direccion ya no es nuestra y AWS puede reasignarla a otra
-cuenta, asi que conviene borrarla. Si preguntan por minimo privilegio, es un
-buen ejemplo de higiene: cada redirect URI registrado es un destino al que el
-proveedor esta dispuesto a enviar un codigo de autorizacion.
+**Hay tres redirect URI registrados**, no uno: el del despliegue actual, el de
+una sesion anterior del laboratorio (`3.83.237.65`) y el del entorno local
+(`localhost:4200`). Se dejan a proposito —el docente confirmo que no es problema
+y evita reconfigurar Azure en cada sesion—, pero conviene tener la respuesta
+lista: fuera de un entorno academico se borrarian, porque cada redirect URI es
+un destino al que el proveedor esta dispuesto a enviar un codigo de
+autorizacion, y una IP publica liberada puede quedar en manos de otra cuenta.
 
 **`4-usuarios.png` muestra nombres reales** de personas invitadas al inquilino.
 Conviene decidir si esa lamina entra en el entregable que se archiva o se
