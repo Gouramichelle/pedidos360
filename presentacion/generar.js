@@ -789,6 +789,42 @@ s = slideTabla('Evidencia de los controles de seguridad', 'Resultados obtenidos 
   [4.2, 1.6, 6.13]);
 ubicacion(s, 'README.md > 8. Verificacion  ·  DevTools > Network  ·  config/SecurityConfig.java');
 
+s = slideDosColumnas('El validador del Gateway, comprobado el 20 de octubre', 'Reproducible ahora mismo: el API Manager no se apaga cuando se detiene el laboratorio',
+  {
+    t: 'Lo que responde',
+    items: [
+      'Sin token: 401. Con un token inventado: 401 tambien.',
+      'La respuesta trae la cabecera www-authenticate: Bearer.',
+      'Y un apigw-requestid, que identifica la peticion dentro del Gateway.',
+      'El cuerpo es {"message":"Unauthorized"}, el del Gateway, no el de ningun microservicio.',
+    ],
+  },
+  {
+    t: 'Por que esas cabeceras importan',
+    items: [
+      'Son del API Manager, no del backend: prueban que el rechazo ocurre antes de enrutar.',
+      'La comprobacion se hizo con las instancias de aplicacion apagadas, de modo que no habia backend que pudiera responder.',
+      'Si el validador no estuviera adjunto a la ruta, la peticion habria llegado al destino y devuelto un error de conexion, no un 401.',
+      'Es la demostracion mas limpia posible de que valida el token quien tiene que validarlo.',
+    ],
+  });
+ubicacion(s, 'curl contra el Invoke URL  ·  evidencia/COBERTURA.md trae los comandos');
+nota(s, 'Si el laboratorio esta caido el dia de la defensa, esta es la comprobacion que igual se puede correr en vivo delante del docente.');
+
+s = slideTabla('CORS: lo que devuelve de verdad', 'Valores leidos de la respuesta del Gateway, no de la pantalla de configuracion',
+  ['Cabecera devuelta', 'Valor', 'Por que es minimo privilegio'],
+  [
+    ['access-control-allow-origin', 'https://<ip-apps>:8085', 'Un solo origen, el del frontend desplegado. No un comodin, y no localhost'],
+    ['access-control-allow-methods', 'DELETE, GET, PATCH, POST, PUT', 'Los cinco que la aplicacion usa. OPTIONS no aparece, y es correcto que no aparezca'],
+    ['access-control-allow-headers', 'authorization, content-type', 'La credencial y el tipo de contenido. Nada mas'],
+    ['access-control-max-age', '3600', 'El navegador cachea la verificacion una hora y deja de repetirla'],
+  ],
+  [4.0, 3.6, 4.33]);
+s.addText('La peticion de verificacion previa viaja sin credencial, asi que tiene su propia ruta sin validador. Por eso OPTIONS no figura entre los metodos permitidos: esa cabecera declara los metodos de la peticion real, no los de la verificacion. Declararlo seria conceder un permiso que nadie necesita.', {
+  x: 0.7, y: 4.6, w: 11.93, h: 1.1, fontFace: 'Calibri', fontSize: 12.5, color: '667377', isTextBox: true, margin: 0,
+});
+ubicacion(s, 'curl -X OPTIONS contra el Invoke URL  ·  infra/aws/crear-gateway.sh');
+
 s = slideTabla('Respuesta de cada ruta', 'Comportamiento verificado endpoint por endpoint',
   ['Ruta', 'Sin token', 'Con token y rol correcto', 'Con rol insuficiente'],
   [
