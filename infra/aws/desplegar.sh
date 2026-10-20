@@ -32,6 +32,20 @@ source ./entorno-actual.env
 chmod 400 "$PEM"
 
 SSH_OPTS=(-i "$PEM" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
+
+# rsync parte el comando de -e por espacios y no respeta comillas ni escapes,
+# asi que una llave cuya ruta tenga espacios —como "labsuser (5).pem", que es
+# como la nombra el navegador al bajarla dos veces— rompe la copia. Se trabaja
+# sobre una copia en una ruta sin espacios.
+if printf '%s' "$PEM" | grep -q '[[:space:]]'; then
+  PEM_SIN_ESPACIOS="$(mktemp -t pedidos360-llave)"
+  cp "$PEM" "$PEM_SIN_ESPACIOS"
+  chmod 400 "$PEM_SIN_ESPACIOS"
+  trap 'rm -f "$PEM_SIN_ESPACIOS"' EXIT
+  PEM="$PEM_SIN_ESPACIOS"
+  SSH_OPTS=(-i "$PEM" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
+fi
+SSH_CMD="ssh ${SSH_OPTS[*]}"
 en_apps()   { ssh "${SSH_OPTS[@]}" "ec2-user@$APPS_IP_PUBLICA" "$@"; }
 en_broker() { ssh "${SSH_OPTS[@]}" "ec2-user@$BROKER_IP_PUBLICA" "$@"; }
 
@@ -53,7 +67,7 @@ esperar_docker "$BROKER_IP_PUBLICA" "ec2-broker"
 echo
 azul "-- ec2-broker: cluster RabbitMQ y Kafka --"
 
-rsync -az -e "ssh ${SSH_OPTS[*]}" "$RAIZ/infra/mq" "$RAIZ/infra/kafka" \
+rsync -az -e "$SSH_CMD" "$RAIZ/infra/mq" "$RAIZ/infra/kafka" \
   "ec2-user@$BROKER_IP_PUBLICA:~/"
 ok "compose copiados"
 
@@ -80,7 +94,7 @@ NODOS="$(en_broker "sudo docker exec mq-rabbit1-1 rabbitmq-diagnostics -q cluste
 echo
 azul "-- ec2-apps: los seis microservicios y el frontend --"
 
-rsync -az -e "ssh ${SSH_OPTS[*]}" \
+rsync -az -e "$SSH_CMD" \
   --exclude 'target/' --exclude 'node_modules/' --exclude '.git/' --exclude 'dist/' \
   "$RAIZ/infra" "$RAIZ"/ms-pedidos360-* "$RAIZ/frontend-pedidos360" \
   "ec2-user@$APPS_IP_PUBLICA:~/"

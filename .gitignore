@@ -36,3 +36,7 @@ Thumbs.db
 # El deck publicado vive en la raiz; aqui solo el generador
 presentacion/*.pptx
 presentacion/*.pdf
+
+# Respaldos de entregables antes de regrabar: el material viejo ya queda en el
+# historial de git, y duplicar los mp4 infla el repo sin ganar nada.
+evidencia/entregables/v*-local/
