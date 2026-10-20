@@ -101,63 +101,121 @@ mensaje llegara a la cola muerta con `reason: expired`, y volvio a levantarlo.
 
 ---
 
-## Lo que sigue necesitando consola en vivo
+## El API Manager y el despliegue, capturados
 
-### Lo que si se puede comprobar ahora, sin credenciales
+Salida real del 20 de octubre, no transcrita de la pantalla de configuracion.
 
-El API Gateway no se apaga con la sesion del laboratorio, asi que esto responde
-de verdad:
+### La instancia y su configuracion
 
-```bash
-G=https://0b7fhgzl22.execute-api.us-east-1.amazonaws.com
+```
+Nombre     pedidos360-api        Protocolo  HTTP
+Endpoint   https://0b7fhgzl22.execute-api.us-east-1.amazonaws.com
 
-curl -s -o /dev/null -w "sin token:      %{http_code}\n" $G/api/orders
-curl -s -o /dev/null -H "Authorization: Bearer token-falso" \
-     -w "token inventado: %{http_code}\n" $G/api/orders
-
-curl -s -i -X OPTIONS -H "Origin: https://3.83.237.65:8085" \
-     -H "Access-Control-Request-Method: GET" $G/api/orders | grep -i "^access-control"
+CORS   AllowOrigins   https://54.224.223.31:8085
+       AllowMethods   GET, POST, PUT, PATCH, DELETE
+       AllowHeaders   authorization, content-type
+       MaxAge         3600
 ```
 
-Devuelve **401** en los dos casos, con la cabecera `www-authenticate: Bearer` y
-un `apigw-requestid`. Esas dos cabeceras son la prueba de que quien rechaza es
-**el validador del Gateway**, no el backend: el backend ni se entera, y de hecho
-ahora mismo esta apagado.
+`aws apigatewayv2 get-api --api-id 0b7fhgzl22`
 
-El preflight devuelve el origen unico del frontend, las dos cabeceras que la
-aplicacion envia, y **cinco** metodos sin `OPTIONS`. Es minimo privilegio: esa
-cabecera declara los metodos de la peticion real, y la verificacion previa pasa
-por su propia ruta sin validador.
+### El validador de token
 
-### Para cerrar el resto
+```
+Nombre      pedidos360-jwt       Tipo  JWT
+Fuente      $request.header.Authorization
+Emisor      https://login.microsoftonline.com/2d0922c9-.../v2.0
+Audiencias  api://d0120ca1-...   y   d0120ca1-...
+```
 
-Hace falta reiniciar el Learner Lab. Con credenciales frescas:
+Las dos audiencias son a proposito: Azure AD emite tokens v1 con `aud`
+`api://<id>` y v2 con el GUID pelado. Aceptar ambas evita 401 silenciosos si
+cambia `requestedAccessTokenVersion` en el manifiesto.
+
+### Las doce rutas
+
+```
+JWT   ANY /api/orders              NONE  OPTIONS /api/orders
+JWT   ANY /api/orders/{proxy+}     NONE  OPTIONS /api/orders/{proxy+}
+JWT   ANY /api/catalog/{proxy+}    NONE  OPTIONS /api/catalog/{proxy+}
+JWT   ANY /api/report/{proxy+}     NONE  OPTIONS /api/report/{proxy+}
+JWT   ANY /api/audit/{proxy+}      NONE  OPTIONS /api/audit/{proxy+}
+JWT   ANY /api/mqadmin/{proxy+}    NONE  OPTIONS /api/mqadmin/{proxy+}
+```
+
+Seis con validador y seis sin el. Las segundas son la verificacion previa del
+navegador, que viaja sin credencial y por eso no puede exigir token.
+
+### Los contenedores corriendo en la nube
+
+```
+ec2-apps    54.224.223.31          ec2-broker  3.94.98.145
+  apps-frontend-1                    mq-rabbit1-1    (healthy)
+  apps-ms-orders-1                   mq-rabbit2-1    (healthy)
+  apps-ms-catalog-1                  kafka-kafka-1
+  apps-ms-notify-1                   kafka-zookeeper-1
+  apps-ms-report-1
+  apps-ms-audit-1
+  apps-ms-mqadmin-1
+```
+
+Once contenedores en dos instancias, todos levantados con docker compose.
+
+---
+
+## Lo unico que queda: el portal de Azure
+
+El inquilino de Entra ID y sus usuarios no se pueden capturar desde aqui: hacen
+falta las credenciales del portal, que son personales. El video muestra el
+login funcionando contra el tenant real, pero no la pantalla de administracion.
+
+Las diapositivas 6 a 8 del deck traen la ruta exacta para mostrarlo en vivo:
+
+| Que mostrar | Donde |
+|---|---|
+| El inquilino, con su Tenant ID | Entra ID > Overview |
+| El registro de la aplicacion | Entra ID > App registrations > Pedidos360 |
+| La plataforma SPA y el redirect URI | Pedidos360 > Authentication |
+| La version 2 de los tokens | Pedidos360 > Manifest |
+| Los usuarios y sus roles | Enterprise applications > Pedidos360 > Users and groups |
+
+Conviene tener la pestaña abierta y con sesion iniciada antes de empezar, para
+no gastar tiempo autenticandose delante del curso.
+
+---
+
+## Comprobarlo todo de una vez
 
 ```bash
-./infra/aws/provisionar.sh          # levanta red, RDS, las dos EC2 y el Gateway
-./infra/aws/desplegar.sh            # construye y levanta los contenedores
 ./infra/aws/verificar.sh ~/Downloads/labsuser.pem
 ```
 
-Y para que el video deje de mostrar el frontend local llamando directo:
+Trece comprobaciones: el frontend, los seis health, 401 sin token, 401 con token
+invalido, el preflight en 200, los dos nodos del cluster, las seis colas y sus
+politicas de retencion. El 20 de octubre pasaron las trece.
+
+## Si la sesion del laboratorio expira
+
+Las direcciones publicas cambian y hay que rehacer tres pasos:
 
 ```bash
-# 1. El tunel SSH al broker, que rehacer-todo.sh comprueba antes de grabar
-ssh -i ~/Downloads/labsuser.pem -L 15672:localhost:15672 \
-    -L 15673:localhost:15673 ec2-user@<ip-broker>
+./infra/aws/provisionar.sh        # reutiliza lo que exista y arranca lo detenido
+./infra/aws/actualizar-gateway.sh # reapunta las integraciones y el CORS
+./infra/aws/desplegar.sh          # copia el codigo y levanta los contenedores
+```
 
-# 2. La sesion de Azure contra el despliegue nuevo
-cd evidencia && DESTINO=aws npm run sesion
+Despues, el redirect URI nuevo en Azure, y para regrabar:
 
-# 3. Regrabar
+```bash
+cd evidencia
+DESTINO=aws npm run sesion        # el login lo hace la persona, una vez
 ./rehacer-todo.sh aws
 ```
 
-Ninguno de los tres pasos lleva una direccion escrita a mano: `destino.sh` lee
-`APPS_IP_PUBLICA` de `infra/aws/entorno-actual.env`, que es lo que deja
-`provisionar.sh`, y la exporta como `URL_APP` para los specs.
+`destino.sh` lee la IP de `infra/aws/entorno-actual.env`, asi que no hay ninguna
+direccion escrita a mano.
 
-Esto regraba los clips contra el despliegue, con el frontend pasando por el API
-Manager, y vuelve a armar el video y el guion con los tiempos nuevos. La
-topologia de mensajeria es identica en local y en la nube, asi que lo que ya
-esta verificado no cambia de sentido.
+> **Antes de regrabar, respaldar.** El ensamblador sobrescribe
+> `entregables/pedidos360-demostracion.mp4`, y Playwright vacia `videos/` en
+> cada corrida: grabar un spec despues de otro se lleva por delante lo anterior.
+> Los specs de la app y el del tramo en paralelo van en la misma corrida.
