@@ -3,7 +3,7 @@
   "private": true,
   "description": "Graba en video el recorrido completo de la demostracion de EP3/EP4",
   "scripts": {
-    "sesion": "playwright codegen --ignore-https-errors --save-storage=.auth/sesion.json --viewport-size=1280,720 https://3.83.237.65:8085",
+    "sesion": "bash -c '. ./destino.sh && exec playwright codegen --ignore-https-errors --save-storage=.auth/sesion.json --viewport-size=1280,720 \"$URL_APP\"'",
     "grabar": "playwright test",
     "grabar:broker": "playwright test specs/01-broker",
     "grabar:app": "playwright test specs/02-app",

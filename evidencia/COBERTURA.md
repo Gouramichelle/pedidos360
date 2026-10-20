@@ -121,21 +121,20 @@ Hace falta reiniciar el Learner Lab. Con credenciales frescas:
 Y para que el video deje de mostrar el frontend local llamando directo:
 
 ```bash
-# 1. La IP nueva va en el script que captura la sesion de Azure
-#    (evidencia/package.json, script "sesion"), porque el origen tiene que
-#    coincidir con el que Azure tiene registrado como redireccion.
-npm run sesion
-
-# 2. El tunel SSH al broker, que rehacer-todo.sh comprueba antes de grabar
+# 1. El tunel SSH al broker, que rehacer-todo.sh comprueba antes de grabar
 ssh -i ~/Downloads/labsuser.pem -L 15672:localhost:15672 \
     -L 15673:localhost:15673 ec2-user@<ip-broker>
 
+# 2. La sesion de Azure contra el despliegue nuevo
+cd evidencia && DESTINO=aws npm run sesion
+
 # 3. Regrabar
-cd evidencia && DESTINO=aws URL_APP=https://<ip-apps>:8085 ./rehacer-todo.sh
+./rehacer-todo.sh aws
 ```
 
-Los specs leen `URL_APP` y `DESTINO` desde el entorno, asi que no hay que tocar
-codigo: solo el script `sesion` lleva la direccion escrita.
+Ninguno de los tres pasos lleva una direccion escrita a mano: `destino.sh` lee
+`APPS_IP_PUBLICA` de `infra/aws/entorno-actual.env`, que es lo que deja
+`provisionar.sh`, y la exporta como `URL_APP` para los specs.
 
 Esto regraba los clips contra el despliegue, con el frontend pasando por el API
 Manager, y vuelve a armar el video y el guion con los tiempos nuevos. La

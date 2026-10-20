@@ -61,6 +61,7 @@ habla de algo que ya salio de pantalla. Paso, y asi se corrigio.
 | `montaje/laminas.mjs` | Laminas de codigo de los tramos explicativos |
 | `montaje/tarjetas.mjs` | Portada y cierre |
 | `montaje/montar-paralelo.sh` | Compone la app y la consola lado a lado |
+| `destino.sh` | Resuelve a que despliegue se graba, local o AWS |
 | `renombrar.sh` | Nombra los clips grabados |
 | `specs/` | Las grabaciones, con sus marcas de tiempo |
 
@@ -77,6 +78,11 @@ despliegue en AWS, con el tunel SSH y los comandos por SSH.
 
 ## Si cambia la IP de la sesion del lab
 
-Solo queda escrita en un lugar: el script `sesion` de `package.json`. Los
-specs la leen de `URL_APP`, asi que para grabar contra otro destino basta
-`DESTINO=aws URL_APP=https://<ip>:8085 ./rehacer-todo.sh`.
+Ya no esta escrita en ningun lado. `destino.sh` la lee de
+`infra/aws/entorno-actual.env`, que es lo que deja `provisionar.sh`, y la
+exporta como `URL_APP`:
+
+```bash
+./rehacer-todo.sh aws      # graba contra el despliegue de esta sesion
+./rehacer-todo.sh          # graba contra el entorno local
+```
