@@ -151,9 +151,16 @@ hay que volver a correr `actualizar-gateway.sh` y `desplegar.sh`.
 
 ### Si algo falla
 
-`verificar.sh` recorre trece comprobaciones y dice cual fallo. Las causas
-habituales estan al final de
-[evidencia/PASO-A-PASO.md](evidencia/PASO-A-PASO.md).
+`verificar.sh` recorre trece comprobaciones y dice cual fallo. Las tres causas
+que mas se repiten:
+
+- **Los servicios dan 000 y el SSH no entra.** La instancia esta saturada.
+  Reiniciarla desde la consola de AWS; la IP publica no cambia con un reinicio.
+- **No construir las seis imagenes a la vez.** Seis compilaciones de Maven en
+  paralelo no entran en los 4 GB de una `t3.medium` y la dejan sin responder.
+  De a una, con `docker compose build <servicio>`.
+- **`ms-orders` tarda unos 90 segundos en arrancar.** Si da 000 recien
+  levantado, es eso. Los que no usan base de datos arrancan en 15.
 
 ---
 
