@@ -63,16 +63,32 @@ todo vuelve a viajar por el mismo origen y CORS deja de intervenir.
 
 # Despliegue
 
-Procedimiento completo desde cero. Para volver a poner en marcha un entorno ya
-desplegado despues de que expire la sesion del laboratorio, ver
+Hay **dos caminos**, y los dos dejan exactamente la misma infraestructura.
+Cambia quien ejecuta los pasos.
+
+| | [Camino A: con los scripts](#camino-a-con-los-scripts) | [Camino B: a mano por la consola](#camino-b-a-mano-por-la-consola) |
+|---|---|---|
+| **Cuanto toma** | Unos 20 minutos, casi todo esperando | Entre hora y media y dos horas |
+| **Que se aprende** | Poco: el detalle queda dentro del script | Todo: cada recurso se crea viendolo |
+| **Cuando conviene** | Rehacer el entorno, que es lo que mas se repite | La primera vez, y para la defensa |
+| **Que hay que saber** | Tener credenciales y correr un comando | Donde esta cada cosa en la consola de AWS |
+| **Pasos manuales** | Uno: el redirect URI en Azure AD | Todos |
+
+Las dos empiezan igual: **Azure AD no se automatiza**. Hay que hacer la
+[seccion 1](#1-identidad-en-azure-ad) de cualquier modo, porque el inquilino,
+el registro de la aplicacion y los roles se crean en el portal de Microsoft, no
+en AWS.
+
+Si ya desplegaste antes y solo expiro la sesion del laboratorio, no necesitas
+ninguno de los dos caminos completos: ver
 [infra/docs/checklist-reinicio-lab.md](infra/docs/checklist-reinicio-lab.md).
 
-## 0. Levantarlo en cualquier cuenta de AWS
+---
 
-Las secciones siguientes describen el procedimiento por consola, tal como se
-hizo la primera vez. Si lo unico que quieres es ponerlo en marcha, los scripts
-de `infra/aws/` lo hacen entero y funcionan en **cualquier cuenta y cualquier
-region**, no solo en el laboratorio.
+# Camino A: con los scripts
+
+Los scripts de `infra/aws/` levantan la infraestructura entera y funcionan en
+**cualquier cuenta y cualquier region**, no solo en el laboratorio.
 
 ### Lo que hace falta tener antes
 
@@ -138,6 +154,29 @@ hay que volver a correr `actualizar-gateway.sh` y `desplegar.sh`.
 `verificar.sh` recorre trece comprobaciones y dice cual fallo. Las causas
 habituales estan al final de
 [evidencia/PASO-A-PASO.md](evidencia/PASO-A-PASO.md).
+
+---
+
+# Camino B: a mano por la consola
+
+El procedimiento completo, tal como se hizo la primera vez. Vale la pena
+recorrerlo al menos una vez: es lo que permite responder por que cada recurso
+esta donde esta, que es justamente lo que se pregunta en la defensa.
+
+El orden no es arbitrario. La base de datos y el broker tienen que existir
+antes que los microservicios, y el API Gateway antes que el frontend, porque su
+direccion queda compilada dentro del bundle.
+
+| Seccion | Que se crea | Donde |
+|---|---|---|
+| [1](#1-identidad-en-azure-ad) | Inquilino, registro, roles y usuarios | Portal de Azure |
+| [2](#2-red-y-security-groups-en-aws) | Cuatro security groups | EC2 |
+| [3](#3-base-de-datos) | La instancia PostgreSQL | RDS |
+| [4](#4-instancias-ec2) | Las dos maquinas, con Docker | EC2 |
+| [5](#5-mensajeria) | Cluster de RabbitMQ y Kafka | Dentro de `ec2-broker` |
+| [6](#6-microservicios-y-frontend) | Los seis servicios y el frontend | Dentro de `ec2-apps` |
+| [7](#7-api-gateway) | Integraciones, rutas, validador y CORS | API Gateway |
+| [8](#8-verificacion) | Nada: comprueba que todo responde | Terminal |
 
 ## 1. Identidad en Azure AD
 
@@ -540,7 +579,17 @@ sudo docker compose logs ms-report | grep "Snapshot"
 Cada evento conserva el mismo `correlationId` a lo largo de los cuatro
 servicios, lo que permite seguir una operacion de punta a punta.
 
-## 9. Ejecucion local, sin AWS
+---
+
+# Ejecucion local, sin AWS
+
+Para desarrollar y para ensayar la demostracion sin gastar credito. La
+topologia de mensajeria es identica a la de la nube —el mismo cluster de dos
+nodos, las mismas seis colas, los mismos TTL—, asi que lo que se comprueba aca
+vale igual.
+
+Lo unico que no se levanta en local es la identidad: el login sigue usando el
+inquilino real de Azure AD.
 
 Es el modo recomendado para desarrollar. No hace falta nada de AWS: ni EC2, ni
 RDS, ni API Gateway.
@@ -550,7 +599,7 @@ sentido instalarla a mano; los **microservicios corren en la JVM del host**,
 porque asi no hay que reconstruir una imagen por cada cambio y se puede
 enganchar el debugger.
 
-### 9.1 Infraestructura
+## Infraestructura
 
 ```bash
 docker compose -f infra/local/docker-compose.yml up -d
@@ -576,7 +625,7 @@ Verificar que el cluster se formo:
 docker exec local-rabbit1-1 rabbitmq-diagnostics -q cluster_status
 ```
 
-### 9.2 Microservicios
+## Microservicios
 
 Cada uno tiene un perfil `dev` versionado que ya apunta a esa infraestructura,
 asi que un clon nuevo del repo arranca sin configurar nada:
@@ -600,7 +649,7 @@ for p in 8080 8081 8082 8083 8084 8086; do curl -s -o /dev/null -w "$p: %{http_c
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/orders
 ```
 
-### 9.3 Frontend
+## Frontend
 
 ```bash
 cd frontend-pedidos360 && npm start
@@ -610,7 +659,7 @@ cd frontend-pedidos360 && npm start
 el API Gateway, que en local no existe. El login si usa el tenant real de Azure
 AD: la identidad es lo unico que no se puede levantar en local.
 
-### 9.4 Bajar todo
+## Bajar todo
 
 ```bash
 docker compose -f infra/local/docker-compose.yml down     # conserva los datos
