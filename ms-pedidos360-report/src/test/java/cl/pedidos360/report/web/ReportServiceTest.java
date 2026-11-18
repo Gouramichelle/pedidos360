@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import cl.pedidos360.report.domain.OrderSnapshot;
+import cl.pedidos360.report.domain.OrderActivityRepository;
 import cl.pedidos360.report.domain.OrderSnapshotRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -21,6 +22,10 @@ class ReportServiceTest {
 
     @Mock
     OrderSnapshotRepository repository;
+
+    /** La actividad no interviene en los KPI; se inyecta para completar el constructor. */
+    @Mock
+    OrderActivityRepository actividadRepository;
 
     private OrderSnapshot entregado(long id, Instant creado, long minutosParaEntregar, BigDecimal total) {
         OrderSnapshot s = new OrderSnapshot(id, "cliente-" + id, "CREADO", total, creado);
@@ -39,7 +44,7 @@ class ReportServiceTest {
                 entregado(1, base, 10, new BigDecimal("100.00")),
                 entregado(2, base, 20, new BigDecimal("200.00"))));
 
-        ReportService service = new ReportService(repository);
+        ReportService service = new ReportService(repository, actividadRepository);
         Double leadTime = service.kpis().averageLeadTimeSeconds();
 
         assertThat(leadTime).isEqualTo(15 * 60.0); // promedio de 10 y 20 minutos
@@ -52,7 +57,7 @@ class ReportServiceTest {
                 entregado(1, base, 2, new BigDecimal("100.00")),
                 entregado(2, base, 3, new BigDecimal("50.00"))));
 
-        var puntos = new ReportService(repository).kpis().salesByHour();
+        var puntos = new ReportService(repository, actividadRepository).kpis().salesByHour();
 
         assertThat(puntos).hasSize(1);
         assertThat(puntos.get(0).total()).isEqualByComparingTo("150.00");
@@ -67,7 +72,7 @@ class ReportServiceTest {
                 activo(4, "ENTREGADO"),
                 activo(5, "CANCELADO")));
 
-        var conteo = new ReportService(repository).kpis().activeStatusCounts();
+        var conteo = new ReportService(repository, actividadRepository).kpis().activeStatusCounts();
 
         assertThat(conteo).extracting("status", "count")
                 .containsExactlyInAnyOrder(
@@ -80,6 +85,6 @@ class ReportServiceTest {
     @Test
     void sinPedidosEntregadosElLeadTimeEsNulo() {
         when(repository.findAll()).thenReturn(List.of(activo(1, "CREADO")));
-        assertThat(new ReportService(repository).kpis().averageLeadTimeSeconds()).isNull();
+        assertThat(new ReportService(repository, actividadRepository).kpis().averageLeadTimeSeconds()).isNull();
     }
 }

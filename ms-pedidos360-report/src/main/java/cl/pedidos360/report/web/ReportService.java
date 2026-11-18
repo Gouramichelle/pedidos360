@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import cl.pedidos360.report.domain.OrderSnapshot;
+import cl.pedidos360.report.domain.OrderActivityRepository;
 import cl.pedidos360.report.domain.OrderSnapshotRepository;
 import cl.pedidos360.report.web.ReportDtos.ActiveStatusCount;
 import cl.pedidos360.report.web.ReportDtos.KpiSummary;
@@ -33,8 +34,10 @@ public class ReportService {
             List.of("CREADO", "ACEPTADO", "EN_PREPARACION", "DESPACHADO");
 
     private final OrderSnapshotRepository repository;
+    private final OrderActivityRepository actividadRepository;
 
-    public ReportService(OrderSnapshotRepository repository) {
+    public ReportService(OrderSnapshotRepository repository, OrderActivityRepository actividadRepository) {
+        this.actividadRepository = actividadRepository;
         this.repository = repository;
     }
 
@@ -85,5 +88,16 @@ public class ReportService {
     private Map<String, Long> desgloseCompleto(List<OrderSnapshot> todos) {
         return todos.stream()
                 .collect(Collectors.groupingBy(OrderSnapshot::getCurrentStatus, Collectors.counting()));
+    }
+
+    /** La actividad reciente, del pedido tocado mas recientemente al mas antiguo. */
+    public java.util.List<ReportDtos.ActividadPedido> actividad() {
+        return actividadRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(
+                        cl.pedidos360.report.domain.OrderActivity::getLastAt).reversed())
+                .map(a -> new ReportDtos.ActividadPedido(
+                        a.getOrderId(), a.getLastEventType(), a.getLastActor(),
+                        a.getLastSource(), a.getLastStatus(), a.getLastAt(), a.getTransitions()))
+                .toList();
     }
 }

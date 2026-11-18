@@ -50,7 +50,9 @@ public class KafkaConfig {
     public NewTopic deadLetterTopic() {
         return TopicBuilder.name("orders.events." + groupId + ".DLT")
                 .partitions(3)
+                .replicas(3)
                 .config("retention.ms", String.valueOf(10L * 24 * 60 * 60 * 1000)) // 10 dias, dentro del rango 7-14
+                .config("min.insync.replicas", "2")
                 .build();
     }
 
@@ -58,8 +60,13 @@ public class KafkaConfig {
     public NewTopic auditTimelineTopic() {
         return TopicBuilder.name("audit.timeline")
                 .partitions(3)
+                .replicas(3)
+                // compact mas delete: se conserva el ultimo estado de cada
+                // pedido indefinidamente dentro de la ventana, y lo viejo se
+                // borra a los 21 dias. La clave es el id del pedido.
                 .config("cleanup.policy", "compact,delete")
                 .config("retention.ms", String.valueOf(21L * 24 * 60 * 60 * 1000)) // 21 dias, dentro del rango 14-30
+                .config("min.insync.replicas", "2")
                 .build();
     }
 

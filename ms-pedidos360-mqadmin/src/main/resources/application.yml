@@ -11,6 +11,11 @@ spring:
     addresses: ${RABBITMQ_ADDRESSES}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+  kafka:
+    # Los tres brokers del cluster, separados por coma. Basta con que uno
+    # responda para descubrir el resto; se listan los tres para que el arranque
+    # no dependa de que el primero este vivo.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 
 # Ninguno de estos valores tiene default: si falta uno la app no levanta,
 # que es preferible a levantar con una config de seguridad incompleta.

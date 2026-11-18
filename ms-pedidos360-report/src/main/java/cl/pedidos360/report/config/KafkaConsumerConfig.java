@@ -63,6 +63,18 @@ public class KafkaConsumerConfig {
                 .build();
     }
 
+    /**
+     * El grupo que lee audit.timeline.
+     *
+     * Es un grupo distinto del que lee orders.events a proposito: son dos casos
+     * de uso con ritmos y necesidades distintas. Si compartieran grupo, cada
+     * mensaje iria a uno solo de los dos consumidores y la mitad del trabajo se
+     * perderia. Grupos separados significa que cada uno recibe todo el topico y
+     * lleva su propio avance.
+     */
+    @Value("${spring.kafka.consumer.group-id}-timeline")
+    private String grupoTimeline;
+
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> config = new HashMap<>();
@@ -126,5 +138,56 @@ public class KafkaConsumerConfig {
         factory.setCommonErrorHandler(
                 new DefaultErrorHandler(deadLetterPublishingRecoverer, new FixedBackOff(1000L, 3)));
         return factory;
+    }
+
+    // ------------------------------------------------- audit.timeline
+
+    @Bean
+    public ConsumerFactory<String, Object> timelineConsumerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, grupoTimeline);
+        // earliest y no latest: al arrancar por primera vez conviene leer el
+        // topico compactado entero, que es justo lo que reconstruye la
+        // proyeccion sin tener que pedirle nada a nadie.
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        config.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
+        config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+        config.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        config.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
+        // audit.timeline lleva el payload pelado, no envuelto: lo publica
+        // ms-audit ya con forma de registro de trazabilidad.
+        config.put(JsonDeserializer.VALUE_DEFAULT_TYPE,
+                "cl.pedidos360.report.messaging.AuditTimelinePayload");
+        return new DefaultKafkaConsumerFactory<>(config);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, Object> timelineListenerContainerFactory(
+            ConsumerFactory<String, Object> timelineConsumerFactory,
+            KafkaOperations<String, Object> kafkaTemplate) {
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(timelineConsumerFactory);
+        factory.getContainerProperties().setAckMode(AckMode.RECORD);
+        // Misma politica que el otro consumidor: tres reintentos y al *.DLT de
+        // ESTE grupo, para no mezclar los descartes de los dos casos de uso.
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
+                (record, ex) -> new org.apache.kafka.common.TopicPartition(
+                        record.topic() + "." + grupoTimeline + ".DLT", -1));
+        factory.setCommonErrorHandler(new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3)));
+        return factory;
+    }
+
+    @Bean
+    public NewTopic timelineDeadLetterTopic() {
+        return TopicBuilder.name("audit.timeline." + grupoTimeline + ".DLT")
+                .partitions(3)
+                .replicas(3)
+                .config("retention.ms", String.valueOf(10L * 24 * 60 * 60 * 1000))
+                .config("min.insync.replicas", "2")
+                .build();
     }
 }

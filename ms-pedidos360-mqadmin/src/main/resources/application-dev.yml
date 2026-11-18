@@ -11,6 +11,9 @@ spring:
   rabbitmq:
     # Los dos nodos del cluster local (infra/local/docker-compose.yml).
     addresses: localhost:5672,localhost:5673
+  kafka:
+    # Los tres brokers del cluster local (infra/local/docker-compose.yml).
+    bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
 
 security:
   issuer-uri: https://login.microsoftonline.com/2d0922c9-f3ff-4709-b9b7-0c4b54529639/v2.0

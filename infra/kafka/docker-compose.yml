@@ -1,31 +1,130 @@
-# Zookeeper + 1 broker Kafka (MVP), para ec2-broker, junto al cluster de RabbitMQ.
-# Usar la IP PRIVADA de esta instancia en KAFKA_ADVERTISED_LISTENERS: es la
-# direccion que ms-orders/ms-report/ms-audit van a marcar para conectarse, y
-# tiene que ser alcanzable desde ec2-apps. No usar localhost ni la IP publica.
-services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    restart: unless-stopped
+# Arquitectura Kafka: tres nodos Zookeeper y tres brokers.
+#
+#   docker compose -f infra/kafka/docker-compose.yml up -d
+#
+# Por que tres de cada uno:
+#
+#   Zookeeper elige lider por mayoria, y la mayoria de tres es dos. Con tres
+#   nodos el ensemble sobrevive a perder uno; con dos no sobreviviria a perder
+#   ninguno, porque la mayoria de dos tambien es dos.
+#
+#   Tres brokers permiten topicos con factor de replicacion 3 y min.insync=2:
+#   cada particion vive en los tres, y se sigue aceptando escritura mientras
+#   queden dos copias sincronizadas. Es la misma aritmetica de quorum.
+#
+# KAFKA_ADVERTISED_HOST es la IP PRIVADA de esta instancia: es la direccion que
+# los brokers le entregan al cliente para que vuelva a conectarse, asi que tiene
+# que ser alcanzable desde ec2-apps. La deja desplegar.sh.
+#
+# Los listeners van separados a proposito:
+#   INTERNAL  entre brokers y para Kafka UI, por el nombre del contenedor
+#   EXTERNAL  para los microservicios, por la IP de la instancia
+# Sin esa separacion el broker anuncia un nombre de contenedor que nadie fuera
+# de la red de Docker sabe resolver.
 
-  kafka:
-    image: confluentinc/cp-kafka:7.6.1
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
+x-zookeeper-comun: &zookeeper-comun
+  image: confluentinc/cp-zookeeper:7.6.1
+  restart: unless-stopped
+  networks: [kafka]
+  environment: &zookeeper-env
+    ZOOKEEPER_CLIENT_PORT: 2181
+    ZOOKEEPER_TICK_TIME: 2000
+    ZOOKEEPER_INIT_LIMIT: 10
+    ZOOKEEPER_SYNC_LIMIT: 5
+    ZOOKEEPER_SERVERS: zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888
+    KAFKA_HEAP_OPTS: -Xmx256m -Xms256m
+
+x-kafka-comun: &kafka-comun
+  image: confluentinc/cp-kafka:7.6.1
+  restart: unless-stopped
+  networks: [kafka]
+  depends_on: [zookeeper1, zookeeper2, zookeeper3]
+  environment: &kafka-env
+    KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+    KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+    # Con tres brokers, los topicos internos tambien se replican tres veces.
+    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+    KAFKA_MIN_INSYNC_REPLICAS: 2
+    # Los topicos los declaran los propios microservicios al arrancar, con sus
+    # particiones y su politica de retencion. Nada se crea por accidente.
+    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    KAFKA_HEAP_OPTS: -Xmx512m -Xms512m
+
+services:
+  zookeeper1:
+    <<: *zookeeper-comun
+    hostname: zookeeper1
     environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 1
+    volumes: [zk1-data:/var/lib/zookeeper/data, zk1-log:/var/lib/zookeeper/log]
+
+  zookeeper2:
+    <<: *zookeeper-comun
+    hostname: zookeeper2
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 2
+    volumes: [zk2-data:/var/lib/zookeeper/data, zk2-log:/var/lib/zookeeper/log]
+
+  zookeeper3:
+    <<: *zookeeper-comun
+    hostname: zookeeper3
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 3
+    volumes: [zk3-data:/var/lib/zookeeper/data, zk3-log:/var/lib/zookeeper/log]
+
+  kafka1:
+    <<: *kafka-comun
+    hostname: kafka1
+    ports: ["9092:9092"]
+    environment:
+      <<: *kafka-env
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_ADVERTISED_HOST:-172.31.22.30}:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    restart: unless-stopped
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-172.31.19.198}:9092
+    volumes: [kafka1-data:/var/lib/kafka/data]
+
+  kafka2:
+    <<: *kafka-comun
+    hostname: kafka2
+    ports: ["9093:9093"]
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 2
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka2:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-172.31.19.198}:9093
+    volumes: [kafka2-data:/var/lib/kafka/data]
+
+  kafka3:
+    <<: *kafka-comun
+    hostname: kafka3
+    ports: ["9094:9094"]
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 3
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka3:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-172.31.19.198}:9094
+    volumes: [kafka3-data:/var/lib/kafka/data]
+
+networks:
+  # Nombre fijo, no derivado del directorio: el compose de Kafka UI se une a
+  # esta misma red declarandola como externa.
+  kafka:
+    name: pedidos360-kafka
 
 volumes:
-  kafka-data:
+  zk1-data:
+  zk1-log:
+  zk2-data:
+  zk2-log:
+  zk3-data:
+  zk3-log:
+  kafka1-data:
+  kafka2-data:
+  kafka3-data:

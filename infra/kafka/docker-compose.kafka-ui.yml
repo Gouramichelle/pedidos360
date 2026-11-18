@@ -1,0 +1,35 @@
+# Kafka UI: la consola de administracion y monitoreo del cluster.
+#
+#   docker compose -f infra/kafka/docker-compose.kafka-ui.yml up -d
+#
+# Va en su propio archivo porque es una herramienta de operacion, no parte del
+# sistema: el cluster funciona sin ella. Se une a la red que declara
+# docker-compose.yml, asi que ese tiene que estar levantado antes.
+#
+# Se conecta por el listener INTERNAL, con los nombres de los contenedores:
+# esta dentro de la red de Docker, asi que no necesita pasar por la IP de la
+# instancia como hacen los microservicios.
+#
+# Igual que la consola de RabbitMQ, NO se expone a internet: el security group
+# del broker solo acepta trafico desde las instancias de aplicacion. Se entra
+# por un tunel SSH.
+services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pedidos360
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      # Sin login: el acceso ya esta restringido por red. Exponerla a internet
+      # obligaria a configurar autenticacion aca.
+      AUTH_TYPE: DISABLED
+      DYNAMIC_CONFIG_ENABLED: "true"
+    networks: [kafka]
+
+networks:
+  kafka:
+    name: pedidos360-kafka
+    external: true

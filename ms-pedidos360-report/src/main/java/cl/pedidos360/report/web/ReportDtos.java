@@ -19,4 +19,20 @@ public class ReportDtos {
             List<ActiveStatusCount> activeStatusCounts,
             Map<String, Long> statusBreakdown) {
     }
+
+    /**
+     * Ultima intervencion sobre un pedido, proyectada desde audit.timeline.
+     *
+     * @param transitions cuantas veces se toco el pedido: da una idea de si
+     *                    costo sacarlo adelante
+     */
+    public record ActividadPedido(
+            Long orderId,
+            String lastEventType,
+            String lastActor,
+            String lastSource,
+            String lastStatus,
+            java.time.Instant lastAt,
+            int transitions) {
+    }
 }

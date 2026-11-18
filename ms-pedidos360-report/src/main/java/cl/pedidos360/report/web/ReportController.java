@@ -21,4 +21,16 @@ public class ReportController {
     public ReportDtos.KpiSummary kpis() {
         return service.kpis();
     }
+
+    /**
+     * Quien toco cada pedido por ultima vez y desde donde.
+     *
+     * Se alimenta de audit.timeline, no de orders.events: el topico de negocio
+     * no lleva el origen de la accion.
+     */
+    @GetMapping("/activity")
+    @PreAuthorize("hasAnyRole('Admin', 'Auditor')")
+    public java.util.List<ReportDtos.ActividadPedido> actividad() {
+        return service.actividad();
+    }
 }

@@ -29,9 +29,16 @@ public class KafkaProducerConfig {
     @Bean
     public NewTopic ordersEventsTopic() {
         return TopicBuilder.name("orders.events")
+                // Tres particiones: permiten que tres consumidores del mismo
+                // grupo trabajen en paralelo. La clave de particion es el id
+                // del pedido, asi que los eventos de un mismo pedido caen
+                // siempre en la misma particion y conservan su orden.
                 .partitions(3)
-                .replicas(1)
+                // Tres replicas, una por broker. Con min.insync.replicas=2 se
+                // sigue aceptando escritura si se cae un broker.
+                .replicas(3)
                 .config("retention.ms", String.valueOf(5L * 24 * 60 * 60 * 1000)) // 5 dias, dentro del rango 3-7
+                .config("min.insync.replicas", "2")
                 .build();
     }
 

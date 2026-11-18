@@ -48,6 +48,13 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-amqp</artifactId>
     </dependency>
+    <!-- Solo el cliente, no spring-kafka: este microservicio administra la
+         plataforma con AdminClient, no produce ni consume mensajes. La version
+         la fija el parent de Spring Boot. -->
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+    </dependency>
     <!-- OpenAPI/Swagger: requisito tecnico obligatorio del caso -->
     <dependency>
       <groupId>org.springdoc</groupId>
