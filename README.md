@@ -61,6 +61,16 @@ todo vuelve a viajar por el mismo origen y CORS deja de intervenir.
 
 ---
 
+## Guias de estudio
+
+| | |
+|---|---|
+| **[docs/GUIA-ENCARGO.md](docs/GUIA-ENCARGO.md)** | Todo el codigo entregado, de lo primero a lo ultimo: Kafka, RabbitMQ, identidad y API Gateway. Que se hizo, donde esta y por que se decidio asi |
+| **[docs/GUIA-PRESENTACION.md](docs/GUIA-PRESENTACION.md)** | Guion de la defensa, ordenado por como reparte los puntos la pauta, con que decir y que mostrar en cada tramo |
+| **[docs/mensajeria.md](docs/mensajeria.md)** | El diagrama de productores, colas y consumidores |
+
+---
+
 # Despliegue
 
 Hay **dos caminos**, y los dos dejan exactamente la misma infraestructura.
